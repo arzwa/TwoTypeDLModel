@@ -42,10 +42,10 @@ loss. `η` is the parameter for the geometric prior on the number of lineages at
 the root. See module docs for more info.
 """
 @with_kw struct TwoTypeDL{T}
-	λ ::T
-	μ₁::T
-	ν ::T
-	μ₂::T
+    λ ::T
+    μ₁::T
+    ν ::T
+    μ₂::T
     η ::T
 end
 
@@ -56,9 +56,9 @@ The ODE system for the two elementary probability generating functions of the
 two-type DL model.
 """
 function pgf_ode!(dϕ, ϕ, θ::TwoTypeDL, t)
-	@unpack λ, ν, μ₁, μ₂ = θ
-	dϕ[1] = μ₁ + λ*ϕ[1]*ϕ[2] - (λ + μ₁)*ϕ[1]
-	dϕ[2] = μ₂ + ν*ϕ[1] + λ*ϕ[2]^2 - (λ + ν + μ₂)ϕ[2]
+    @unpack λ, ν, μ₁, μ₂ = θ
+    dϕ[1] = μ₁ + λ*ϕ[1]*ϕ[2] - (λ + μ₁)*ϕ[1]
+    dϕ[2] = μ₂ + ν*ϕ[1] + λ*ϕ[2]^2 - (λ + ν + μ₂)ϕ[2]
 end
 
 """
@@ -69,11 +69,11 @@ Computes the probability generating functions ϕ₁(s1, s2, t) and ϕ₂(s1, s2,
 Involves solving a system of two ODEs.
 """
 function ϕ1ϕ2(θ::TwoTypeDL, s1, s2, t; kwargs...)
-	ϕ0 = [s1; s2]
-	ts = (0., t)
-	pr = ODEProblem(pgf_ode!, ϕ0, ts, θ)
+    ϕ0 = [s1; s2]
+    ts = (0., t)
+    pr = ODEProblem(pgf_ode!, ϕ0, ts, θ)
     sl = OrdinaryDiffEq.solve(pr, Tsit5(); dense=false, kwargs...)[:,end]
-	(ϕ1=sl[1], ϕ2=sl[2])
+    (ϕ1=sl[1], ϕ2=sl[2])
 end
 
 """
@@ -130,13 +130,13 @@ end
 Perform a `logsumexp` on the antidiagonals of a matrix.
 """
 function log_antidiagsum(A)
-	n = size(A, 1)
-	x = fill(-Inf, 2n)
-	for i=0:n-1, j=0:i
-		x[i + 1] = logaddexp(x[i + 1], A[i - j + 1, j + 1])
-		x[2n - i] = logaddexp(x[2n - i], A[n-i+j, n-j])
-	end
-	return x
+    n = size(A, 1)
+    x = fill(-Inf, 2n)
+    for i=0:n-1, j=0:i
+        x[i + 1] = logaddexp(x[i + 1], A[i - j + 1, j + 1])
+        x[2n - i] = logaddexp(x[2n - i], A[n-i+j, n-j])
+    end
+    return x
 end
 
 """
@@ -159,14 +159,14 @@ Do the pruning step along an edge [u → v].
 function prune_edge(Lvs, θ, t, N, n, ndata)
     Lus = fill(-Inf, n, n, ndata)
     ϕ1, ϕ2 = ϕ_fft_grid(θ, t, N)
-	Threads.@threads for j=0:n-1
+    Threads.@threads for j=0:n-1
         #@info "thread $(Threads.threadid())"
         for k=0:n-1  
             P = transitionp_fft(ϕ1, ϕ2, j, k)
             _prune_edge!(Lus, Lvs, P, j, k, n) 
         end
-	end
-	return Lus
+    end
+    return Lus
 end
 
 # inner loop for pruning along internal edge
@@ -223,15 +223,15 @@ julia> l
 function loglikelihood(θ::TwoTypeDL, X, tree; n=8, N=16)
     @assert N > n "N (FFT discretization) must be larger than n (bound)"
     ndata = size(X, 1)
-	function prune(node)
+    function prune(node)
         isleaf(node) && return X[:,name(node)] 
-		L = map(children(node)) do child
-			Lchild = prune(child)
+        L = map(children(node)) do child
+            Lchild = prune(child)
             Ledge = prune_edge(Lchild, θ, distance(child), N, n, ndata)
-		end
+        end
         return L[1] .+ L[2]
-	end
-	Ls = prune(getroot(tree))
+    end
+    Ls = prune(getroot(tree))
     ℓ  = sum(mapslices(x->integrate_prior(x, Geometric(θ.η)), Ls, dims=[1,2]))
     ℓ, Ls
 end
@@ -251,15 +251,15 @@ the gene tree, assuming a geometric distribution for the total number Z, and
 assuming X₁ ~ Binomial(Z, p), X₂ = Z - X₁.
 """
 struct TwoTypeRootPrior{T}
-	η::T
-	p::T
+    η::T
+    p::T
 end
 
 function Base.rand(p::TwoTypeRootPrior) 
-	Z = rand(Geometric(p.η)) + 1
-	X1 = rand(Binomial(Z, p.p))
-	X2 = Z - X1
-	(X1, X2)
+    Z = rand(Geometric(p.η)) + 1
+    X1 = rand(Binomial(Z, p.p))
+    X2 = Z - X1
+    (X1, X2)
 end
 
 """
@@ -295,10 +295,10 @@ julia> simulate(θ, prior, tree, 3)
 ```
 """
 function simulate(θ::TwoTypeDL, rootprior, tree, n)
-	df = map(i->simulate(θ, rand(rootprior), tree), 1:n) |> DataFrame
-	ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
-	rename!(ddf, names(df))
-	ddf, df
+    df = map(i->simulate(θ, rand(rootprior), tree), 1:n) |> DataFrame
+    ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
+    rename!(ddf, names(df))
+    ddf, df
 end
 
 """
@@ -308,16 +308,16 @@ Simulate the two-type branching process model with parameters `θ` along a tree
 `tree` with root state `X`.
 """
 function simulate(p::TwoTypeDL, X, tree)
-	result = Dict{Symbol,Tuple{Int,Int}}()
-	function simwalk(node, X)
-		_X = simulate(p, X, distance(node))
-		isleaf(node) && return result[Symbol(name(node))] = _X
-		for c in children(node)
-			simwalk(c, _X)
-		end
-	end
-	simwalk(tree, X)
-	return (; result...)
+    result = Dict{Symbol,Tuple{Int,Int}}()
+    function simwalk(node, X)
+        _X = simulate(p, X, distance(node))
+        isleaf(node) && return result[Symbol(name(node))] = _X
+        for c in children(node)
+            simwalk(c, _X)
+        end
+    end
+    simwalk(tree, X)
+    return (; result...)
 end
 
 """
@@ -327,25 +327,25 @@ Simulate the two-tye branching process model with parameters `θ` starting from
 state `X` (a tuple (X₁, X₂)) for a time period `t`.
 """
 function simulate(p::TwoTypeDL, X, t::Real)
-	rates = getrates(p, X)
-	t -= randexp()/sum(rates)
-	while t > 0.
-		i = sample(1:5, Weights(rates))
-		if i == 1
-			X = (X[1], X[2]+1)
-		elseif i == 2
-			X = (X[1]-1, X[2])
-		elseif i == 3
-			X = (X[1], X[2]+1)
-		elseif i == 4
-			X = (X[1], X[2]-1)
-		else
-			X = (X[1]+1, X[2]-1)
-		end
-		rates = getrates(p, X)
-		t -= randexp()/sum(rates)
-	end
-	return X
+    rates = getrates(p, X)
+    t -= randexp()/sum(rates)
+    while t > 0.
+        i = sample(1:5, Weights(rates))
+        if i == 1
+            X = (X[1], X[2]+1)
+        elseif i == 2
+            X = (X[1]-1, X[2])
+        elseif i == 3
+            X = (X[1], X[2]+1)
+        elseif i == 4
+            X = (X[1], X[2]-1)
+        else
+            X = (X[1]+1, X[2]-1)
+        end
+        rates = getrates(p, X)
+        t -= randexp()/sum(rates)
+    end
+    return X
 end
 
 end # module
