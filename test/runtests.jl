@@ -31,14 +31,16 @@ using Test, DataFrames, NewickTree
         θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5, 0.8)  
         X = DataFrame(:A=>[1,2], :B=>[0,2], :C=>[4,6])
         l = map(N->loglikelihood(θ, X, tree1, n=N÷2, N=N)[1], 15:5:50)
-        @test all(isapprox.(l, -19.61649, atol=1e-3)) 
+        @test all(isapprox.(l, -18.79128, atol=1e-3)) 
     end
 
     @testset "Simulation and larger data set" begin
         θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5, 0.8)  
         p = TwoTypeRootPrior(0.8, 0.8)
         X, Y = simulate(θ, p, tree2, 100)
-        @time l, L = loglikelihood(θ, X, tree2, n=12, N=24)
+        @time lx, Lx = loglikelihood(θ, X, tree2, n=12, N=24)
+        @time ly, Ly = loglikelihood(θ, Y, tree2, n=12, N=24)
+        @test ly < lx  # should always be, state space much larger for Y
     end
 
 end
