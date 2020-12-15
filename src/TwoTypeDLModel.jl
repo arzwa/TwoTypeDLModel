@@ -25,6 +25,10 @@ duplicated gene. The most important aspect of the model type 2 genes get lost
 at a higher rate than type 1 genes, and that type 2 genes can get established
 (capturing the processes of sub- and neofunctionalization) and become stably
 incorporated type 1 genes.
+
+Throughout we assume a Geometric prior is specified for the number of genes
+at the root of the species tree for each gene family, and we assume at least
+one 'stable' (type 1) gene is among these.
 """
 module TwoTypeDLModel
 
@@ -32,14 +36,33 @@ using Parameters, FFTW, DifferentialEquations
 using NewickTree, StatsFuns, Distributions
 using DataFrames, Random, StatsBase
 
-export TwoTypeDL, TwoTypeRootPrior, Profiles, simulate
+export TwoTypeDL, RootPrior, TwoTypePhyloModel
+export Profiles, simulate, PSettings
+
+"""
+    Profiles(data::DataFrame)
+
+Reduce a dataframe to the unique rows it contains and a count for each row.
+"""
+struct Profiles{T}
+    data  ::DataFrame
+    counts::Vector{T}
+end
+
+function Profiles(data)
+    rows = sort(collect(countmap(eachrow(data))), by=x->x[2], rev=true)
+    df = DataFrame(first.(rows))
+    xs = vcat(last.(rows))
+    Profiles(df, xs)
+end
+
+Base.show(io::IO, p::Profiles) = show(io, hcat(p.counts, p.data))
 
 """
     TwoTypeDL{T}
 
 Two-type branching process model for gene family evolution by duplication and
-loss. `η` is the parameter for the geometric prior on the number of lineages at
-the root. See module docs for more info.
+loss.
 
 To reparameterize an existing TwoTypeDL struct, one can use the struct as a 
 function.
@@ -54,7 +77,6 @@ TwoTypeDL{Float64}
   μ₁: Float64 0.675312373529684
   ν: Float64 0.6090749991263547
   μ₂: Float64 0.40013553628911924
-  η: Float64 0.8
 ```
 """
 @with_kw struct TwoTypeDL{T}
@@ -62,154 +84,135 @@ TwoTypeDL{Float64}
     μ₁::T
     ν ::T
     μ₂::T
-    η ::T
 end
 
 # Two useful functions
-Base.NamedTuple(θ::TwoTypeDL) = (λ=θ.λ, μ₁=θ.μ₁, ν=θ.ν, μ₂=θ.μ₂, η=θ.η)
+Base.NamedTuple(θ::TwoTypeDL) = (λ=θ.λ, μ₁=θ.μ₁, ν=θ.ν, μ₂=θ.μ₂)
 (θ::TwoTypeDL)(; kwargs...) = TwoTypeDL(merge(NamedTuple(θ), (; kwargs...))...)
 
 """
-    pgf_ode!(dϕ, ϕ, θ, t)
+    RootPrior
 
-The ODE system for the two elementary probability generating functions of the
-two-type DL model.
+A simple prior distribution for the number of genes of each type at the root of
+the gene tree, assuming a geometric distribution for the total number Z, and 
+assuming X₂ ~ Binomial(Z-1, 1-p), X₂ = Z - X₁. Using this law we get a marginal
+geometric distribution at the root and at least one type 1 gene.
 """
-function pgf_ode!(dϕ, ϕ, θ::TwoTypeDL, t)
-    @unpack λ, ν, μ₁, μ₂ = θ
-    dϕ[1] = μ₁ + λ*ϕ[1]*ϕ[2] - (λ + μ₁)*ϕ[1]
-    dϕ[2] = μ₂ + ν*ϕ[1] + λ*ϕ[2]^2 - (λ + ν + μ₂)ϕ[2]
+struct RootPrior{T}
+    η::T
+    p::T
+end
+
+function Base.rand(d::RootPrior) 
+    Z = rand(Geometric(d.η)) + 1
+    X2 = rand(Binomial(Z-1, 1. - d.p))
+    X1 = Z - X2  # at least 1 stable gene assumed
+    (X1, X2)
+end
+
+function Distributions.logpdf(d::RootPrior, X1, X2)
+    X1 == 0 && return -Inf
+    Z = X1 + X2
+    return logpdf(Geometric(d.η), Z-1) + logpdf(Binomial(Z, d.p), X1-1)
 end
 
 """
-    ϕ1ϕ2(θ::TwoTypeDL, s1, s2, t; kwargs_for_ODE_solver...)
+    TwoTypePhyloModel
 
-Computes the probability generating functions ϕ₁(s1, s2, t) and ϕ₂(s1, s2, t)
-(coefficients are P(X(t)=(j,k)|X(0)=(1,0)) and P(X(t)=(j,k)|X(0)=(0,1))).
-Involves solving a system of two ODEs.
+This bundles a parameterization, tree and prior into a single model object that
+can be used to compute the marginal likelihood.
 """
-function ϕ1ϕ2(θ::TwoTypeDL, s1, s2, t; kwargs...)
-    ϕ0 = [s1; s2]
-    ts = (0., t)
-    pr = ODEProblem(pgf_ode!, ϕ0, ts, θ)
-    sl = OrdinaryDiffEq.solve(pr, Tsit5(); dense=false, kwargs...)[:,end]
-    (ϕ1=sl[1], ϕ2=sl[2])
+struct TwoTypePhyloModel{T1,T2,T3}
+    tree  ::T1
+    params::T2
+    prior ::T3
 end
 
 """
-    ϕ_fft_grid(θ, t, N)
+    loglikelihood(m::TwoTypePhyloModel, data, settings)
 
-Evaluate the probability generating functions along the complex unit circle on
-a N × N grid, to serve as input for a discrete fourier transform. 
+Compute the loglikelihood P(data|θ,tree) for model θ, data and a tree,
+marginalized over the root prior distribution.
 
-!!! note:
-    We use the ensemble solver from DifferentialEquations to solve the ODEs
-    along the grid of initial conditions in parallel.
+# Example
+
+```julia-repl
+julia> θ = TwoTypeDL(rand(4)...);
+
+julia> tree = readnw("((A:1.2,B:1.2):0.8,C:2.0);");
+
+julia> data = DataFrame(:A=>rand(1:5, 5), :B=>rand(1:5, 5), :C=>rand(1:5, 5));
+
+julia> data = Profiles(data)
+5×4 DataFrame
+ Row │ x1     A      B      C
+     │ Int64  Int64  Int64  Int64
+─────┼────────────────────────────
+   1 │     1      3      1      5
+   2 │     1      2      3      1
+   3 │     1      4      2      1
+   4 │     1      4      4      5
+   5 │     1      1      2      3
+
+julia> model = TwoTypePhyloModel(tree, θ, RootPrior(0.8, 0.5));
+
+julia> loglikelihood(model, data)
+-34.21028952032416
+```
 """
-function ϕ_fft_grid(θ, t, N)
-    prob = ODEProblem(pgf_ode!, [0., 0.], (0., t), θ)
-    init = [[exp(2π*im*u/N), exp(2π*im*v/N)] for u=0:N-1, v=0:N-1]
-    function ensemble_probfun(prob, i, repeat)
-        remake(prob, u0=init[i])
-    end
-    ensemble_prob = EnsembleProblem(prob, prob_func=ensemble_probfun)
-    sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), trajectories=N*N)
-    extract_ϕ1ϕ2_solution(sim, N)
-end
-
-"""
-    extract_ϕ1ϕ2_solution(sln::EnsembleSolution, N)
-
-Extract the ODE solver results along the NxN grid.
-"""
-function extract_ϕ1ϕ2_solution(sln::EnsembleSolution, N)
-    U  = last.(sln.u)
-    ϕ1 = reshape(first.(U), N, N)
-    ϕ2 = reshape(last.(U), N, N)
-    (ϕ1, ϕ2)
-end
-
-"""
-    transitionp_fft(ϕ1, ϕ2, j, k, [nonext=true])
-
-Obtain the matrix of transition probabilities P{X(t)=(l,m)|X(0)=(j,k)} using
-the fast Fourier transform for the grid computed for the probability generating
-functions.
-"""
-function transitionp_fft(ϕ1, ϕ2, j, k, nonext=false)
-    A = (ϕ1 .^ j) .* (ϕ2 .^ k)
-    fft!(A)
-    P = real(A) ./ size(ϕ1, 1)^2
-    P[P .< 0.] .= 0.
-    nonext && (P[1,:] .= 0.)
-    return infify!(log.(P))
-end
-
-"""
-    transitionp(j, k, t, N)
-
-Obtain the matrix of transition probabilities P{X(t)=(l,m)|X(0)=(j,k)} using
-the fast Fourier transform of the fourier series representation of the probability
-generating functions.
-"""
-function transitionp(θ, j, k, t, N)
-    ϕ1, ϕ2 = ϕ_fft_grid(θ, t, N)
-    transitionp_fft(ϕ1, ϕ2, j, k, θ.μ₁ == 0.)
-end
-
-"""
-    infify(P, reltrunc=25)
-
-Truncate a matrix of log probabilities relative to the maximum value, so that
-`P[P .< maximum(P) - reltrunc] == -Inf`.
-
-!!! note
-    This is hacky, it would be better to ensure each row and column is concave,
-    but that requires a O(n^2) loop
-"""
-function infify!(P, reltrunc=25)
-    trunc = maximum(P) - reltrunc
-    P[P .< trunc] .= -Inf
-    return P
-end
-
-"""
-    log_antidiagsum(A)
-
-Perform a `logsumexp` on the antidiagonals of a matrix.
-"""
-function log_antidiagsum(A)
-    n = size(A, 1)
-    x = fill(-Inf, 2n)
-    for i=0:n-1, j=0:i
-        x[i + 1] = logaddexp(x[i + 1], A[i - j + 1, j + 1])
-        x[2n - i] = logaddexp(x[2n - i], A[n-i+j, n-j])
-    end
-    return x
+function Distributions.loglikelihood(m::TwoTypePhyloModel, X, settings=PSettings())
+    L = prune(m.params, m.tree, X.data, settings)
+    ℓ = integrate_prior(L, m.prior)
+    sum(ℓ .* X.counts)
 end
 
 """
     integrate_prior(L, d::Distribution)
 
-Integrate a prior distribution on a discrete likelihood vector/matrix.  We
-assume at least one type 1 gene at the root, so implicitly set the first row to
--Inf. 
-
-!!! note
-    Assumes the prior is defined over a domain 0:n, but we shift it by 1
-    (i.e. P(X=1) = pdf(d, 0) is assumed).
+Integrate a prior distribution on a discrete likelihood vector/matrix. 
 """
-integrate_prior(L::Matrix, d) = integrate_prior(log_antidiagsum(@view L[2:end,:]), d)
-integrate_prior(L::Vector, d) = logsumexp(L .+ logpdf(d, 0:length(L)-1))
+function integrate_prior(L::Array{T,3}, d) where T
+    ℓ = Vector{T}(undef, size(L, 3))
+    for i=1:length(ℓ)
+        @inbounds ℓ[i] = integrate_prior(L[:,:,i], d)
+    end
+    return ℓ
+end
+
+function integrate_prior(L::Matrix, d::RootPrior)
+    ℓ = -Inf
+    for i=1:size(L, 1), j=1:size(L, 2)
+        ℓ = logaddexp(ℓ, L[i,j] + logpdf(d, i-1, j-1))
+    end
+    return ℓ
+end
+
+"""
+    prune(θ::TwoTypeDL, tree, data, settings)
+"""
+function prune(θ::TwoTypeDL{T}, tree, data, settings=PSettings()) where T
+    ndata = size(data, 1)
+    function prunewalk(node)
+        isleaf(node) && return data[:,name(node)] 
+        L = map(children(node)) do child
+            Lchild = prunewalk(child)
+            Ledge = prune_edge(Lchild, θ, distance(child), settings, ndata)
+        end
+        return L[1] .+ L[2]
+    end
+    # couldn't get it type stable, although prune_edge is...
+    return prunewalk(getroot(tree))::Array{T,3}
+end
 
 """
     prune_edge(Lvs, θ, t, N, n)
 
 Do the pruning step along an edge [u → v].
 """
-function prune_edge(Lvs, θ, t, N, n, ndata)
+function prune_edge(Lvs, θ, t, settings, ndata)
+    @unpack n = settings
     Lus = fill(-Inf, n, n, ndata)
-    ϕ1, ϕ2 = ϕ_fft_grid(θ, t, N)
+    ϕ1, ϕ2 = ϕ_fft_grid(θ, t, settings)
     Threads.@threads for j=0:n-1
         #@info "thread $(Threads.threadid())"
         for k=0:n-1  
@@ -246,189 +249,8 @@ function _prune_edge!(Lus, Lvs::Vector{Tuple{Int,Int}}, P, j, k, n)
     end
 end
 
-"""
-    loglikelihood(θ, data, tree; n=8, N=16)
-
-Compute the loglikelihood P(data|θ,tree) for model θ, data and a tree. Assumes
-`n` as bound on the state space and `N` as the number of discretization points
-for the FFT to compute the transition probabilities. Does a recursion along the
-tree. Data should be accessible like a DataFrame, i.e. counts for species `A`
-should be accessible through `data[:,"A"]`.
-
-# Example
-
-```julia-repl
-julia> θ = TwoTypeDL(rand(5)...);
-
-julia> tree = readnw("((A:1,B:1):0.5,C:1.5);");
-
-julia> data = DataFrame(:A=>rand(1:5, 5), :B=>rand(1:5, 5), :C=>rand(1:5, 5))
-5×3 DataFrame
- Row │ A      B      C     
-     │ Int64  Int64  Int64 
-─────┼─────────────────────
-   1 │     2      4      1
-   2 │     5      5      2
-   3 │     5      3      2
-   4 │     5      5      1
-   5 │     2      4      3
-
-julia> data = Profiles(data);
-
-julia> l, L = loglikelihood(θ, data, tree);
-
-julia> l
--31.53046866294061
-```
-"""
-function Distributions.loglikelihood(θ::TwoTypeDL, X, tree; n=8, N=16)
-    @assert N > n "N (FFT discretization) must be larger than n (bound)"
-    @unpack data, counts = X
-    ndata = size(data, 1)
-    function prune(node)
-        isleaf(node) && return data[:,name(node)] 
-        L = map(children(node)) do child
-            Lchild = prune(child)
-            Ledge = prune_edge(Lchild, θ, distance(child), N, n, ndata)
-        end
-        return L[1] .+ L[2]
-    end
-    Ls = prune(getroot(tree))
-    ℓ  = mapslices(x->integrate_prior(x, Geometric(θ.η)), Ls, dims=[1,2])
-    sum(vec(ℓ) .* counts), Ls
-end
-
-"""
-    Profiles(data::DataFrame)
-
-Reduce a dataframe to the unique rows it contains and a count for each row.
-"""
-struct Profiles{T}
-    data  ::DataFrame
-    counts::Vector{T}
-end
-
-function Profiles(data)
-    rows = sort(collect(countmap(eachrow(data))), by=x->x[2], rev=true)
-    df = DataFrame(first.(rows))
-    xs = vcat(last.(rows))
-    Profiles(df, xs)
-end
-
-Base.show(io::IO, p::Profiles) = show(io, hcat(p.counts, p.data))
-
-"""
-    getrates(θ::TwoTypeDL, X)
-
-Get the duplication/loss/... rates when in state X = (X₁, X₂).
-"""
-getrates(p::TwoTypeDL, X) = [p.λ*X[1], p.μ₁*X[1], p.λ*X[2], p.μ₂*X[2], p.ν*X[2]]
-
-"""
-    TwoTypeRootPrior
-
-A simple prior distribution for the number of genes of each type at the root of
-the gene tree, assuming a geometric distribution for the total number Z, and 
-assuming X₂ ~ Binomial(Z-1, 1-p), X₂ = Z - X₁. Using this law we get a marginal
-geometric distribution at the root and at least one type 1 gene.
-"""
-struct TwoTypeRootPrior{T}
-    η::T
-    p::T
-end
-
-function Base.rand(p::TwoTypeRootPrior) 
-    Z = rand(Geometric(p.η)) + 1
-    X2 = rand(Binomial(Z-1, 1. - p.p))
-    X1 = Z - X2  # at least 1 stable gene assumed
-    (X1, X2)
-end
-
-"""
-    simulate(θ::TwoTypeDL, rootprior, tree, n)
-
-Simulate `n` family profiles from the two-type branching process model with
-parameters `θ` along a tree, assuming the `rootprior` for the number of genes
-at the root.
-
-# Example
-
-```julia-repl
-julia> θ = TwoTypeDL(rand(5)...);
-
-julia> prior = TwoTypeRootPrior(0.8, 0.9);
-
-julia> tree = readnw("((A:1,B:1):0.5,C:1.5);");
-
-julia> simulate(θ, prior, tree, 3)
-(3×3 DataFrame
- Row │ A      B      C
-     │ Int64  Int64  Int64
-─────┼─────────────────────
-   1 │     3      2      0
-   2 │     2      1      7
-   3 │     0      0      1, 3×3 DataFrame
- Row │ A       B       C
-     │ Tuple…  Tuple…  Tuple…
-─────┼────────────────────────
-   1 │ (2, 1)  (2, 0)  (0, 0)
-   2 │ (2, 0)  (0, 1)  (1, 6)
-   3 │ (0, 0)  (0, 0)  (1, 0))
-```
-"""
-function simulate(θ::TwoTypeDL, rootprior, tree, n)
-    df = map(i->simulate(θ, rand(rootprior), tree), 1:n) |> DataFrame
-    ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
-    rename!(ddf, names(df))
-    ddf, df
-end
-
-"""
-    simulate(θ::TwoTypeDL, X, tree)
-
-Simulate the two-type branching process model with parameters `θ` along a tree
-`tree` with root state `X`.
-"""
-function simulate(p::TwoTypeDL, X, tree)
-    result = Dict{Symbol,Tuple{Int,Int}}()
-    function simwalk(node, X)
-        _X = simulate(p, X, distance(node))
-        isleaf(node) && return result[Symbol(name(node))] = _X
-        for c in children(node)
-            simwalk(c, _X)
-        end
-    end
-    simwalk(tree, X)
-    return (; result...)
-end
-
-"""
-    simulate(θ::TwoTypeDL, X, t)
-
-Simulate the two-tye branching process model with parameters `θ` starting from
-state `X` (a tuple (X₁, X₂)) for a time period `t`.
-"""
-function simulate(p::TwoTypeDL, X, t::Real)
-    rates = getrates(p, X)
-    t -= randexp()/sum(rates)
-    while t > 0.
-        i = sample(1:5, Weights(rates))
-        if i == 1
-            X = (X[1], X[2]+1)
-        elseif i == 2
-            X = (X[1]-1, X[2])
-        elseif i == 3
-            X = (X[1], X[2]+1)
-        elseif i == 4
-            X = (X[1], X[2]-1)
-        else
-            X = (X[1]+1, X[2]-1)
-        end
-        rates = getrates(p, X)
-        t -= randexp()/sum(rates)
-    end
-    return X
-end
+include("probabilities.jl")
+include("simulation.jl")
 
 end # module
 
