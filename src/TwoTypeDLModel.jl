@@ -142,6 +142,13 @@ end
 Compute the loglikelihood P(data|θ,tree) for model θ, data and a tree,
 marginalized over the root prior distribution.
 
+!!! note 
+    This function is implemented so that the output is, as expected, a negative
+    real number being the loglikelihood. The function `loglhood` which takes
+    the same arguments returns a tuple with both the marginal loglikelihood and
+    the dynamic programming matrix, which may be useful for recycling precious
+    computations when only the root state/prior changes.
+
 # Example
 
 ```julia-repl
@@ -205,6 +212,9 @@ end
 
 """
     prune(θ::TwoTypeDL, tree, data, settings)
+
+Compute the matrix of 'partial' loglikelihood values alon the tree using
+Felsenstein's pruning algorithm (variable elimination).
 """
 function prune(θ::TwoTypeDL{T}, tree, data, settings=PSettings()) where T
     ndata = size(data, 1)
@@ -230,7 +240,6 @@ function prune_edge(Lvs, θ, t, settings, ndata)
     Lus = fill(-Inf, n, n, ndata)
     ϕ1, ϕ2 = ϕ_fft_grid(θ, t, settings)
     Threads.@threads for j=0:n-1
-        #@info "thread $(Threads.threadid())"
         for k=0:n-1  
             P = transitionp_fft(ϕ1, ϕ2, j, k, θ.μ₁ == 0.)
             _prune_edge!(Lus, Lvs, P, j, k, n) 
@@ -270,26 +279,4 @@ include("simulation.jl")
 include("mcmc.jl")
 
 end # module
-
-# There are several issues, as illustrated by a proof of principle
-# implementation I did, that make the whole deal tricky:
-# 
-# (1) Numerical issues: to obtain transition probabilities, we need to solve a
-# system of two ODEs to obtain the generating functions, evaluate them for
-# complex arguments so that they become a Fourier series and so that we can
-# obtain the transition probabilities using a FFT. For the FFT we need to
-# truncate the state space, and the numerical accuracy is dependent on this
-# truncation. 
-# 
-# (2) Computational burden: 
-# Better data structures/loop organization in pruning algorithm! (less
-# allocation!), currently most of the time is spent in doing sums in the 
-# algorithm (logaddexp in prune_edge)...
-#
-# (3) Identifiability: given that we observe only the total number of genes
-# (i.e. X₁ + X₂, not (X₁, X₂)), we run in some identifiability issues. We
-# essentially have an overdetermined model, and our only hope to obtain
-# reasonable paramter estimates is to use (strongly) informative priors...
-# Note that with μ₁ = 0, we get a special case of the model involving only
-# three parameters that is still of interest.
 
