@@ -32,28 +32,37 @@ using Test, DataFrames, NewickTree
         θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5)  
         X = Profiles(DataFrame(:A=>[1,2], :B=>[0,2], :C=>[4,6]))
         p = RootPrior(0.8, 0.5)
-        m = TwoTypePhyloModel(tree1, θ, p)
+        m = TwoTypeTree(tree1, θ, p)
         l = map(N->loglikelihood(m, X, PSettings(n=N÷2, N=N)), 15:5:50)
-        @test all(isapprox.(l, -20.94242, atol=1e-3)) 
+        @test all(isapprox.(l, -20.050456, atol=1e-3)) 
     end
 
     @testset "Simulation and larger data set" begin
         θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5)  
-        m = TwoTypePhyloModel(tree2, θ, RootPrior(0.8, 0.5))
-        X, Y = simulate(m, 100)
+        m = TwoTypeTree(tree2, θ, RootPrior(0.8, 0.5))
+        X, Y = TwoTypeDLModel.simulate(m, 100)
         @time lx = loglikelihood(m, Profiles(X))
         @time ly = loglikelihood(m, Profiles(Y))
         @test ly < lx  # should always be, state space much larger for Y
     end
 
     @testset "Extinction probabilities Monte Carlo test" begin
-        θ = TwoTypeDL(0.2, 0.2, 0.4, 1.5)  
-        m = TwoTypePhyloModel(tree2, θ, RootPrior(0.8, 0.5))
-        X, Y = simulate(m, 10000)
-        X_ = filter(x->any(Array(x[[:og, :ob]]) .> 0) && 
-                  any(Array(x[[:on,:osi,:osj,:or]]) .> 0), X)        
-        p = nrow(X_)/nrow(X)
-        @info "probability of non-extinction in both clades" p
+        for i=1:10
+            μ = exp(randn())
+            x = μ .* rand(3) ./ 10
+            η = 0.5 + rand()/2
+            q = rand()
+            θ = TwoTypeDL(x..., μ)  
+            R = RootPrior(η, q)
+            m = TwoTypeTree(tree2, θ, R)
+            X, Y = TwoTypeDLModel.simulate(m, 50000)
+            X_ = filter(x->any(Array(x[[:og, :ob]]) .> 0) && 
+                      any(Array(x[[:on,:osi,:osj,:or]]) .> 0), X)        
+            p̂ = nrow(X_)/nrow(X)
+            p = exp(TwoTypeDLModel.p_nonextinct_bothclades(m, PSettings(N=32, n=20)))
+            #@info "probability of non-extinction in both clades" θ R p p̂
+            @test p ≈ p̂ atol=1e-2
+        end
     end
 
 end

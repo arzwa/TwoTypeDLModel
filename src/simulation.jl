@@ -38,7 +38,7 @@ julia> simulate(θ, prior, tree, 3)
    3 │ (0, 0)  (0, 0)  (1, 0))
 ```
 """
-function simulate(m::TwoTypePhyloModel, n)
+function simulate(m::TwoTypeTree, n)
     df = map(i->simulate(m.params, rand(m.prior), m.tree), 1:n) |> DataFrame
     ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
     rename!(ddf, names(df))

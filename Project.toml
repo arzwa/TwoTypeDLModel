@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Bijectors = "76274a88-744f-5084-9051-94815aaf08c4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DifferentialEquations = "0c46a032-eb83-5123-abaf-570d42b7fbaa"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"

@@ -36,7 +36,7 @@ using Parameters, FFTW, DifferentialEquations
 using NewickTree, StatsFuns, Distributions
 using DataFrames, Random, StatsBase
 
-export TwoTypeDL, RootPrior, TwoTypePhyloModel
+export TwoTypeDL, RootPrior, TwoTypeTree
 export Profiles, simulate, PSettings
 
 """
@@ -45,15 +45,16 @@ export Profiles, simulate, PSettings
 Reduce a dataframe to the unique rows it contains and a count for each row.
 """
 struct Profiles{T}
-    data  ::DataFrame
+    data::DataFrame
     counts::Vector{T}
+    n::Int
 end
 
 function Profiles(data)
     rows = sort(collect(countmap(eachrow(data))), by=x->x[2], rev=true)
     df = DataFrame(first.(rows))
     xs = vcat(last.(rows))
-    Profiles(df, xs)
+    Profiles(df, xs, nrow(data))
 end
 
 Base.show(io::IO, p::Profiles) = show(io, hcat(p.counts, p.data))
@@ -103,6 +104,9 @@ struct RootPrior{T}
     p::T
 end
 
+Base.NamedTuple(θ::RootPrior) = (η=θ.η, p=θ.p)
+(θ::RootPrior)(; kwargs...) = RootPrior(merge(NamedTuple(θ), (; kwargs...))...)
+
 function Base.rand(d::RootPrior) 
     Z = rand(Geometric(d.η)) + 1
     X2 = rand(Binomial(Z-1, 1. - d.p))
@@ -113,23 +117,27 @@ end
 function Distributions.logpdf(d::RootPrior, X1, X2)
     X1 == 0 && return -Inf
     Z = X1 + X2
-    return logpdf(Geometric(d.η), Z-1) + logpdf(Binomial(Z, d.p), X1-1)
+    return logpdf(Geometric(d.η), Z-1) + logpdf(Binomial(Z-1, d.p), X1-1)
 end
 
 """
-    TwoTypePhyloModel
+    TwoTypeTree
 
 This bundles a parameterization, tree and prior into a single model object that
 can be used to compute the marginal likelihood.
 """
-struct TwoTypePhyloModel{T1,T2,T3}
+struct TwoTypeTree{T1,T2,T3}
     tree  ::T1
     params::T2
     prior ::T3
 end
 
+(m::TwoTypeTree)(θ::TwoTypeDL) = TwoTypeTree(m.tree, θ, m.prior)
+(m::TwoTypeTree)(θ::RootPrior) = TwoTypeTree(m.tree, m.params, θ)
+(m::TwoTypeTree)(a, b) = TwoTypeTree(m.tree, a, b)
+
 """
-    loglikelihood(m::TwoTypePhyloModel, data, settings)
+    loglikelihood(m::TwoTypeTree, data, settings)
 
 Compute the loglikelihood P(data|θ,tree) for model θ, data and a tree,
 marginalized over the root prior distribution.
@@ -154,16 +162,24 @@ julia> data = Profiles(data)
    4 │     1      4      4      5
    5 │     1      1      2      3
 
-julia> model = TwoTypePhyloModel(tree, θ, RootPrior(0.8, 0.5));
+julia> model = TwoTypeTree(tree, θ, RootPrior(0.8, 0.5));
 
 julia> loglikelihood(model, data)
 -34.21028952032416
 ```
 """
-function Distributions.loglikelihood(m::TwoTypePhyloModel, X, settings=PSettings())
+Distributions.loglikelihood(m::TwoTypeTree, X, settings=PSettings()) = 
+    loglhood(m, X, settings)[1]
+
+function loglhood(m::TwoTypeTree, X, settings)
     L = prune(m.params, m.tree, X.data, settings)
+    loglhood(L, m, X, settings)
+end
+
+function loglhood(L::Array{T,3}, m::TwoTypeTree, X, settings) where T
     ℓ = integrate_prior(L, m.prior)
-    sum(ℓ .* X.counts)
+    p = p_nonextinct_bothclades(m, settings)
+    sum(ℓ .* X.counts) - X.n * p, L
 end
 
 """
@@ -251,6 +267,7 @@ end
 
 include("probabilities.jl")
 include("simulation.jl")
+include("mcmc.jl")
 
 end # module
 

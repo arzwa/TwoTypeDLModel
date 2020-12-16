@@ -88,7 +88,7 @@ end
 Compute the probability of non extinction in both clades stemming from the 
 root of the phylogeny using the probability generating functions.
 """
-function p_nonextinct_bothclades(m::TwoTypePhyloModel, settings)
+function p_nonextinct_bothclades(m::TwoTypeTree, settings)
     @unpack tree, params, prior = m
     @unpack N, n, abstol, reltol = settings
     s = zeros(length(postwalk(tree)), 4)
