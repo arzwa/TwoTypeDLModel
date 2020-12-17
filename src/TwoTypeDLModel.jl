@@ -40,6 +40,8 @@ using SpecialFunctions
 export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
 export Profiles, simulate, PSettings
 
+abstract type RootPrior{T} end
+
 """
     Profiles(data::DataFrame)
 
@@ -105,7 +107,7 @@ struct TwoTypeTree{T1,T2,T3}
 end
 
 (m::TwoTypeTree)(θ::TwoTypeDL) = TwoTypeTree(m.tree, θ, m.prior)
-(m::TwoTypeTree)(θ::GeometricPrior) = TwoTypeTree(m.tree, m.params, θ)
+(m::TwoTypeTree)(θ::RootPrior) = TwoTypeTree(m.tree, m.params, θ)
 (m::TwoTypeTree)(a, b) = TwoTypeTree(m.tree, a, b)
 
 """

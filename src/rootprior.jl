@@ -1,6 +1,3 @@
-# abstract RootPrior type
-abstract type RootPrior{T} end
-
 """
     GeometricPrior
 
