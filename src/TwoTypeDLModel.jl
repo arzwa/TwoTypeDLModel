@@ -35,8 +35,9 @@ module TwoTypeDLModel
 using Parameters, FFTW, DifferentialEquations
 using NewickTree, StatsFuns, Distributions
 using DataFrames, Random, StatsBase
+using SpecialFunctions
 
-export TwoTypeDL, RootPrior, TwoTypeTree
+export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
 export Profiles, simulate, PSettings
 
 """
@@ -92,35 +93,6 @@ Base.NamedTuple(θ::TwoTypeDL) = (λ=θ.λ, μ₁=θ.μ₁, ν=θ.ν, μ₂=θ.�
 (θ::TwoTypeDL)(; kwargs...) = TwoTypeDL(merge(NamedTuple(θ), (; kwargs...))...)
 
 """
-    RootPrior
-
-A simple prior distribution for the number of genes of each type at the root of
-the gene tree, assuming a geometric distribution for the total number Z, and 
-assuming X₂ ~ Binomial(Z-1, 1-p), X₂ = Z - X₁. Using this law we get a marginal
-geometric distribution at the root and at least one type 1 gene.
-"""
-struct RootPrior{T}
-    η::T
-    p::T
-end
-
-Base.NamedTuple(θ::RootPrior) = (η=θ.η, p=θ.p)
-(θ::RootPrior)(; kwargs...) = RootPrior(merge(NamedTuple(θ), (; kwargs...))...)
-
-function Base.rand(d::RootPrior) 
-    Z = rand(Geometric(d.η)) + 1
-    X2 = rand(Binomial(Z-1, 1. - d.p))
-    X1 = Z - X2  # at least 1 stable gene assumed
-    (X1, X2)
-end
-
-function Distributions.logpdf(d::RootPrior, X1, X2)
-    X1 == 0 && return -Inf
-    Z = X1 + X2
-    return logpdf(Geometric(d.η), Z-1) + logpdf(Binomial(Z-1, d.p), X1-1)
-end
-
-"""
     TwoTypeTree
 
 This bundles a parameterization, tree and prior into a single model object that
@@ -133,7 +105,7 @@ struct TwoTypeTree{T1,T2,T3}
 end
 
 (m::TwoTypeTree)(θ::TwoTypeDL) = TwoTypeTree(m.tree, θ, m.prior)
-(m::TwoTypeTree)(θ::RootPrior) = TwoTypeTree(m.tree, m.params, θ)
+(m::TwoTypeTree)(θ::GeometricPrior) = TwoTypeTree(m.tree, m.params, θ)
 (m::TwoTypeTree)(a, b) = TwoTypeTree(m.tree, a, b)
 
 """
@@ -169,7 +141,7 @@ julia> data = Profiles(data)
    4 │     1      4      4      5
    5 │     1      1      2      3
 
-julia> model = TwoTypeTree(tree, θ, RootPrior(0.8, 0.5));
+julia> model = TwoTypeTree(tree, θ, GeometricPrior(0.8, 0.5));
 
 julia> loglikelihood(model, data)
 -34.21028952032416
@@ -202,7 +174,7 @@ function integrate_prior(L::Array{T,3}, d) where T
     return ℓ
 end
 
-function integrate_prior(L::Matrix, d::RootPrior)
+function integrate_prior(L::Matrix, d)
     ℓ = -Inf
     for i=1:size(L, 1), j=1:size(L, 2)
         ℓ = logaddexp(ℓ, L[i,j] + logpdf(d, i-1, j-1))
@@ -275,6 +247,7 @@ function _prune_edge!(Lus, Lvs::Vector{Tuple{Int,Int}}, P, j, k, n)
 end
 
 include("probabilities.jl")
+include("rootprior.jl")
 include("simulation.jl")
 include("mcmc.jl")
 

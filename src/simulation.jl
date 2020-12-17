@@ -6,51 +6,63 @@ Get the duplication/loss/... rates when in state X = (X₁, X₂).
 getrates(p::TwoTypeDL, X) = [p.λ*X[1], p.μ₁*X[1], p.λ*X[2], p.μ₂*X[2], p.ν*X[2]]
 
 """
-    simulate(θ, rootprior, tree, n)
-    simulate(θ, tree, n; p=0.5) 
+    simulate(model::TwoTypeTree, n, [condition::Function])
 
-Simulate `n` family profiles from the two-type branching process model with
-parameters `θ` along a tree, assuming the `rootprior` for the number of genes
-at the root.
+Simulate `n` family profiles from the two-type branching process model, subject
+to the condition. `condition` should be a function `f(x)` checking whether a named
+tuple `x` of the form (leafname=(X1, X2),...) satisfies the condition.
 
 # Example
 
 ```julia-repl
-julia> θ = TwoTypeDL(rand(5)...);
+julia> tree = readnw("((A:1.2,B:1.2):0.8,C:2.0);");
 
-julia> prior = RootPrior(0.8, 0.9);
+julia> model = TwoTypeTree(tree, TwoTypeDL(rand(4)...), GeometricPrior(eta, 0.5));
 
-julia> tree = readnw("((A:1,B:1):0.5,C:1.5);");
-
-julia> simulate(θ, prior, tree, 3)
+julia> TwoTypeDLModel.simulate(model, 3)
 (3×3 DataFrame
  Row │ A      B      C
      │ Int64  Int64  Int64
 ─────┼─────────────────────
-   1 │     3      2      0
-   2 │     2      1      7
-   3 │     0      0      1, 3×3 DataFrame
+   1 │     4      2      1
+   2 │     1      7      2
+   3 │     1      4      3, 3×3 DataFrame
  Row │ A       B       C
      │ Tuple…  Tuple…  Tuple…
 ─────┼────────────────────────
-   1 │ (2, 1)  (2, 0)  (0, 0)
-   2 │ (2, 0)  (0, 1)  (1, 6)
-   3 │ (0, 0)  (0, 0)  (1, 0))
+   1 │ (1, 3)  (2, 0)  (0, 1)
+   2 │ (1, 0)  (2, 5)  (1, 1)
+   3 │ (1, 0)  (2, 2)  (2, 1))
 ```
 """
-function simulate(m::TwoTypeTree, n)
-    df = map(i->simulate(m.params, rand(m.prior), m.tree), 1:n) |> DataFrame
+function simulate(m::TwoTypeTree, n, condition=default_condition(m.tree))
+    df = map(i->simulate(m.params, rand(m.prior), m.tree, condition), 1:n) |> DataFrame
     ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
     rename!(ddf, names(df))
     ddf, df
 end
 
+function default_condition(tree)
+    left = Symbol.(name.(getleaves(tree[1])))
+    rght = Symbol.(name.(getleaves(tree[2])))
+    x -> any(y->sum(getfield(x, y)) .> 0, left) && 
+         any(y->sum(getfield(x, y)) .> 0, rght) 
+end
+
 """
-    simulate(θ::TwoTypeDL, X, tree)
+    simulate(θ::TwoTypeDL, X, tree, [condition::Function])
 
 Simulate the two-type branching process model with parameters `θ` along a tree
 `tree` with root state `X`.
 """
+function simulate(p, X, tree, condition=x->true)
+    x = simulate(p, X, tree)
+    while !condition(x)
+        x = simulate(p, X, tree)
+    end
+    return x
+end
+
 function simulate(p::TwoTypeDL, X::Tuple, tree)
     result = Dict{Symbol,Tuple{Int,Int}}()
     function simwalk(node, X)
