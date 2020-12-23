@@ -1,7 +1,6 @@
 using TwoTypeDLModel
 using TwoTypeDLModel: loglikelihood, ϕ1ϕ2, ϕ_fft_grid, transitionp_fft
 using TwoTypeDLModel: Chain, mwg_sweep!
-using AdvancedMH: AdaptiveProposal
 using Test, DataFrames, NewickTree, Distributions
 
 @testset "TwoTypeDLModel" begin
@@ -39,13 +38,35 @@ using Test, DataFrames, NewickTree, Distributions
         @test all(isapprox.(l, -20.050456, atol=1e-3)) 
     end
 
+    @testset "DAG vs. Profile matrix" begin
+        θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5)  
+        X = DataFrame(:A=>[1,2], :B=>[0,2], :C=>[4,6])
+        p = GeometricPrior(0.8, 0.5)
+        m = TwoTypeTree(tree1, θ, p)
+        s = PSettings(n=12, N=24)
+        Y = Profiles(X)
+        l1, L = TwoTypeDLModel.loglhood(m, Y, s)
+        dag = CountDAG(X, tree1, s.n)
+        l2 = loglikelihood(m, dag, s)
+        @test all(dag.parts[9,:,:,1]  .≈ L[:,:,2])
+        @test all(dag.parts[10,:,:,1] .≈ L[:,:,1])
+        @test l1 ≈ l2
+    end
+
     @testset "Simulation and larger data set" begin
         θ = TwoTypeDL(0.1, 0.01, 0.1, 0.5)  
         m = TwoTypeTree(tree2, θ, GeometricPrior(0.8, 0.5))
-        X, Y = TwoTypeDLModel.simulate(m, 100)
-        @time lx = loglikelihood(m, Profiles(X))
-        @time ly = loglikelihood(m, Profiles(Y))
+        s = PSettings(n=12, N=24)
+        X, Y = TwoTypeDLModel.simulate(m, 500)
+        @time lx = loglikelihood(m, Profiles(X), s)
+        @time ly = loglikelihood(m, Profiles(Y), s)
         @test ly < lx  # should always be, state space much larger for Y
+        dag1 = CountDAG(X, tree2, 12)
+        dag2 = CountDAG(Y, tree2, 12)
+        @time l1x = loglikelihood(m, dag1, s)
+        @time l1y = loglikelihood(m, dag2, s)
+        @test lx ≈ l1x
+        @test ly ≈ l1y
     end
 
     @testset "Extinction probabilities Monte Carlo test" begin
@@ -57,9 +78,9 @@ using Test, DataFrames, NewickTree, Distributions
             θ = TwoTypeDL(x..., μ)  
             R = GeometricPrior(η, q)
             m = TwoTypeTree(tree2, θ, R)
-            X, Y = TwoTypeDLModel.simulate(m, 50000)
-            X_ = filter(x->any(Array(x[[:og, :ob]]) .> 0) && 
-                      any(Array(x[[:on,:osi,:osj,:or]]) .> 0), X)        
+            X, Y = TwoTypeDLModel.simulate(m, 50000, x->true)
+            X_ = filter(x->any(Array(x[[:og, :ob]]) .> 0) &&
+                           any(Array(x[[:on,:osi,:osj,:or]]) .> 0), X)
             p̂ = nrow(X_)/nrow(X)
             p = exp(TwoTypeDLModel.p_nonextinct_bothclades(m, PSettings(N=32, n=20)))
             #@info "probability of non-extinction in both clades" θ R p p̂
@@ -71,34 +92,15 @@ using Test, DataFrames, NewickTree, Distributions
         θ = TwoTypeDL(0.3, 0.1, 0.3, 5.5)  
         model = TwoTypeTree(tree2, θ, GeometricPrior(0.8, 0.5))
         prior = (Beta(), Beta(), Beta(), Exponential(5), Beta()) 
-        props = [AdaptiveProposal(Normal(0, 0.1)) for i=1:5]
         chain = Chain(model, prior)
         smple = map(1:10000) do i
             mwg_sweep!(chain)
             chain.state.θ
-        end |> x->permutedims(reduce(hcat, x)) |> 
-               X->TwoTypeDLModel.transform(chain, X)
-        ms = mean(smple, dims=1)
-        for (m, p) in zip(ms, priors)
+        end |> xs->hcat(TwoTypeDLModel.transform.(Ref(chain), xs)...)
+        ms = mean(smple, dims=2)
+        for (m, p) in zip(ms, prior)
             @test m ≈ mean(p) rtol=1e-1
         end
-    end
-
-    @testset "Custom MWG algorithm" begin
-        θ = TwoTypeDL(0.3, 0.1, 0.3, 5.5)  
-        model = TwoTypeTree(tree2, θ, GeometricPrior(0.8, 0.5))
-        D, _  = TwoTypeDLModel.simulate(model, 500)
-        data  = Profiles(D)
-        prior = (Beta(), Beta(), Beta(), Exponential(5), Beta()) 
-        props = [AdaptiveProposal(Normal(0, 0.1)) for i=1:5]
-        chain = Chain(model, prior, data)
-        smple = map(1:10) do i
-            @printf "%10d " i
-            println(join([(@sprintf "%3.5f" x) for x in chain.state.θ], " "))
-            mwg_sweep!(chain)
-            chain.state.θ
-        end |> x->permutedims(reduce(hcat, x)) |>
-               X->TwoTypeDLModel.transform(chain, X)
     end
 
 end
