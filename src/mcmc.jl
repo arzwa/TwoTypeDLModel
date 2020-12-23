@@ -95,7 +95,7 @@ end
 
 Take `n` samples from the chain, returns intermediate results when interrupted.
 """
-function sample(chain, n)
+function StatsBase.sample(chain, n)
     i = 0
     samples = typeof(chain.state)[]
     while i <= n
