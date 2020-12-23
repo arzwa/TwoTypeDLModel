@@ -103,6 +103,18 @@ using Test, DataFrames, NewickTree, Distributions
         end
     end
 
+    @testset "Custom MWG algorithm, prior sample" begin
+        θ = TwoTypeDL(0.2, 0.1, 0.2, 5.)  
+        p = GeometricPrior(0.9, 0.5)
+        m = TwoTypeTree(tree2, θ, p)
+        s = PSettings(n=12, N=24)
+        X, _ = TwoTypeDLModel.simulate(m, 100)
+        d = CountDAG(X, tree2, 12)
+        prior = (Beta(), Beta(), Beta(), Exponential(5), Beta()) 
+        chain = Chain(m, prior, d, s)
+        xs = sample(chain, 1000)
+    end
+
 end
 
 

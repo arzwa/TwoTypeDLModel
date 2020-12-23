@@ -1,6 +1,9 @@
 # For the DAG
 using AdvancedMH, Bijectors, Printf
 
+# Note: we still need to keep the root state matrices in the transition if we
+# want to skip recomputing the whole PGM upon changing η/n, this is because the
+# DAG is modified each iteration of the chain, but not necessarily accepted.
 """
     Transition
 
@@ -10,6 +13,7 @@ struct Transition{T}
     θ::Vector{T}
     ℓ::T
     p::T
+    L::Array{T,3}
 end
 
 """
@@ -26,14 +30,16 @@ mutable struct Chain{T,Π,P}
     state::Transition{T}
     mfun::Function
     ℓfun::Function
+    ℓroot::Function
 end
 
 function Chain(model, priors, data=nothing, settings=PSettings())
-    t = Transition(randn(length(priors)), -Inf, -Inf)
+    t = Transition(randn(length(priors)), -Inf, -Inf, zeros(1, 1, 1))
     p = [AdaptiveProposal(Normal(0., 0.5)) for i=1:length(priors)]
-    mfun = x->getmodel(model, priors, x)
-    ℓfun = isnothing(data) ? (x, y)->0. : (x, y)->loglhood(mfun(x), data, settings, y)
-    Chain(priors, p, t, mfun, ℓfun)
+    mfun  = x->getmodel(model, priors, x)
+    ℓfun  = isnothing(data) ? x->(0.,t.L) : x->loglhood(mfun(x), data, settings)
+    ℓroot = isnothing(data) ? (x,L)->(0.,L) : (x,L)->loglhoodroot(mfun(x), data, L, settings)
+    Chain(priors, p, t, mfun, ℓfun, ℓroot)
 end
 
 function Base.show(io::IO, c::Chain) 
@@ -42,10 +48,15 @@ function Base.show(io::IO, c::Chain)
     write(io, s, "\n")
 end
 
-function loglhood(model, dag, settings, prune::Bool)
-    return prune ? 
-        loglikelihood(model, dag, settings) : 
-        loglhoodroot(model, dag, settings)
+function loglhood(model::TwoTypeTree, dag::CountDAG, settings)
+    ℓ = loglikelihood(model, dag, settings) 
+    L = dag.parts[dag.nodes[1],:,:,1]
+    return ℓ, L
+end
+
+function loglhoodroot(model, dag, L, settings)
+    ℓ = _loglhoodroot(model, dag, L, settings)
+    return ℓ, L
 end
 
 function getmodel(model, priors, x)
@@ -75,14 +86,14 @@ function mwg_sweep!(chain)
     for (i, p) in enumerate(chain.proposals)
         x = copy(chain.state.θ)
         x[i] += rand(p)
-        if i >= 5  # root prior paramaters
-            ℓ_ = chain.ℓfun(x, false)
-        else 
-            ℓ_ = chain.ℓfun(x, true) 
+        if i < 5  # process parameters
+            ℓ_, L_ = chain.ℓfun(x) 
+        else      # root prior parameters
+            ℓ_, L_ = chain.ℓroot(x, chain.state.L)
         end
         π_ = logprior(chain, x) 
         if log(rand()) < ℓ_ + π_ - logdensity(chain)
-            chain.state = Transition(x, ℓ_, π_)
+            chain.state = Transition(x, ℓ_, π_, L_)
             AdvancedMH.accepted!(p)
         end
         AdvancedMH.consider_adaptation!(p)

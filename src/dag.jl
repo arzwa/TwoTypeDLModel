@@ -103,10 +103,19 @@ This outputs the complete marginal loglikelihood for the DAG.
 """
 function integrate_prior(dag::CountDAG{T}, d) where T
     ℓ = zero(T)
-    nodes = dag.nodes[1]
-    for n in nodes
+    for n in dag.nodes[1]
         k = dag.ndata[n][2]
         ℓ += k*integrate_prior(dag.parts[n,:,:,1], d)
+    end
+    return ℓ
+end
+
+# for the MCMC algorithm
+function integrate_prior(L, dag::CountDAG{T}, d) where T
+    ℓ = zero(T)
+    for (i, n) in enumerate(dag.nodes[1])
+        k = dag.ndata[n][2]
+        ℓ += k*integrate_prior(L[i,:,:], d)
     end
     return ℓ
 end
@@ -117,12 +126,14 @@ end
 function Distributions.loglikelihood(
         model::TwoTypeTree, dag::CountDAG, settings=PSettings())
     prune!(dag, model.tree, model.params, settings)
-    return loglhoodroot(model, dag, settings)
-end
-
-function loglhoodroot(model, dag, settings=PSettings())
     p = p_nonextinct_bothclades(model, settings)
     return integrate_prior(dag, model.prior) - dag.nfam * p
+end
+
+# For the MCMC algorithm
+function _loglhoodroot(model, dag, L, settings=PSettings())
+    p = p_nonextinct_bothclades(model, settings)
+    return integrate_prior(L, dag, model.prior) - dag.nfam * p
 end
 
 """
