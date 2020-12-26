@@ -1,7 +1,7 @@
 using TwoTypeDLModel
 using TwoTypeDLModel: loglikelihood, ϕ1ϕ2, ϕ_fft_grid, transitionp_fft
 using TwoTypeDLModel: Chain, mwg_sweep!
-using Test, DataFrames, NewickTree, Distributions
+using Test, DataFrames, NewickTree, Distributions, Bijectors
 
 @testset "TwoTypeDLModel" begin
     tree1 = readnw("((A:1.2,B:1.2):0.8,C:2.0);")
@@ -93,26 +93,25 @@ using Test, DataFrames, NewickTree, Distributions
         model = TwoTypeTree(tree2, θ, GeometricPrior(0.8, 0.5))
         prior = (Beta(), Beta(), Beta(), Exponential(5), Beta()) 
         chain = Chain(model, prior)
-        smple = map(1:10000) do i
-            mwg_sweep!(chain)
-            chain.state.θ
-        end |> xs->hcat(TwoTypeDLModel.transform.(Ref(chain), xs)...)
-        ms = mean(smple, dims=2)
-        for (m, p) in zip(ms, prior)
+        xs = sample(chain, 10_000, progress=false)
+        Xs = getfield.(xs, :θ) |> x->hcat(x...)
+        for (i, p) in enumerate(prior)
+            m = mean(invlink(p, Xs[i,:]))
             @test m ≈ mean(p) rtol=1e-1
         end
     end
 
-    @testset "Custom MWG algorithm, prior sample" begin
+    @testset "Chain with data" begin
         θ = TwoTypeDL(0.2, 0.1, 0.2, 5.)  
-        p = GeometricPrior(0.9, 0.5)
+        p = TwoTypeDLModel.BBGPrior(0.9, 4., 0.2, 1:10)
         m = TwoTypeTree(tree2, θ, p)
         s = PSettings(n=12, N=24)
         X, _ = TwoTypeDLModel.simulate(m, 100)
-        d = CountDAG(X, tree2, 12)
-        prior = (Beta(), Beta(), Beta(), Exponential(5), Beta()) 
+        d = CountDAG(X, tree2, s.n)
+        prior = (Beta(), Beta(), Beta(), Exponential(5), Beta(), Exponential(5.)) 
         chain = Chain(m, prior, d, s)
-        xs = sample(chain, 1000)
+        xs = sample(chain, 2, progress=false)
+        @test isfinite(xs[end].ℓ)
     end
 
 end

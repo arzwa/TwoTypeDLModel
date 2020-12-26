@@ -71,6 +71,7 @@ end
 
 getrootprior(p::GeometricPrior, θ) = p(r=θ[end])
 getrootprior(p::BetaGeometricPrior, θ) = p(r=θ[5], n=θ[6]) 
+getrootprior(p::BBGPrior, θ) = p(r=θ[5], n=θ[6]) 
 
 # logdensity, loglhood, logprior
 logdensity(chain) = chain.state.ℓ + chain.state.p
@@ -106,16 +107,16 @@ end
 
 Take `n` samples from the chain, returns intermediate results when interrupted.
 """
-function StatsBase.sample(chain, n)
+function StatsBase.sample(chain, n; progress=true)
     i = 0
     samples = typeof(chain.state)[]
     while i <= n
         i += 1
         try
-            @printf "%10d " i
+            progress && (@printf "%10d " i)
             x = mwg_sweep!(chain)
             push!(samples, x)
-            println(join([@sprintf("%7.4f", xi) for xi in x.θ], " "))
+            progress && (println(join([@sprintf("%7.4f", xi) for xi in x.θ], " ")))
         catch e
             @info "Sampler interrupted" e
             return samples

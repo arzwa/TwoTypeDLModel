@@ -87,3 +87,42 @@ function Distributions.logpdf(d::BetaGeometricPrior, X1, X2)
     return lp + logpdf(Binomial(Z-1, d.r), X1-1)
 end
 
+"""
+    BoundedBetaGeometricPrior
+
+Often this is preferred over the BetaGeometricPrior I think, since often we 
+restrict the domain, and the unrestricted Beta-Geometric distribution can
+give real large samples.
+"""
+struct BoundedBetaGeometricPrior{T,D} <: RootPrior{T}
+    m::T
+    n::T
+    r::T
+    d::D
+end
+
+function BoundedBetaGeometricPrior(m::T, n::T, r::T, support::D) where {T,D<:UnitRange}
+    α = m * (1 + n)
+    β = (1 - m) * (1 + n)
+    p = exp.([logbeta(α + 1, β + Z - 1) - logbeta(α, β) for Z=support])
+    d = DiscreteNonParametric(support, p ./ sum(p))
+    BoundedBetaGeometricPrior(m, n, r, d)
+end
+
+const BBGPrior{T,D} = BoundedBetaGeometricPrior{T,D} where {T,D}
+
+Base.NamedTuple(θ::BoundedBetaGeometricPrior) = (m=θ.m, n=θ.n, r=θ.r, support=θ.d.support)
+(θ::BoundedBetaGeometricPrior)(; kwargs...) = BBGPrior(merge(NamedTuple(θ), (; kwargs...))...)
+
+function Base.rand(d::BoundedBetaGeometricPrior)
+    Z  = rand(d.d)
+    X2 = rand(Binomial(Z - 1, 1. - d.r))
+    X1 = Z - X2 
+    (X1, X2)
+end
+
+function Distributions.logpdf(d::BoundedBetaGeometricPrior, X1, X2)
+    X1 == 0 && return -Inf
+    Z = X1 + X2
+    return logpdf(d.d, Z) + logpdf(Binomial(Z-1, d.r), X1-1)
+end
