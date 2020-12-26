@@ -42,11 +42,24 @@ function simulate(m::TwoTypeTree, n, condition=default_condition(m.tree))
     ddf, df
 end
 
-function default_condition(tree)
+"""
+    default_condition(tree, maxn=Inf)
+
+Get a closure for the Boolean function that checks whether a (simulated) gene
+family profile satisfies the default condition of being non-extinct in both
+lineages stemming from the root. Optionally this takes a maximum count if we
+have an upper bound condition.
+"""
+function default_condition(tree, maxn=Inf)
     left = Symbol.(name.(getleaves(tree[1])))
     rght = Symbol.(name.(getleaves(tree[2])))
-    x -> any(y->sum(getfield(x, y)) .> 0, left) && 
-         any(y->sum(getfield(x, y)) .> 0, rght) 
+    function cond(y)
+        y = map(x->sum(x), y)
+        a = any(x->getfield(y, x) > 0, left)
+        b = any(x->getfield(y, x) > 0, rght)
+        c = all(x->x < maxn, y)
+        a && b && c
+    end
 end
 
 """

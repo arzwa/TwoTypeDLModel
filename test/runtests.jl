@@ -114,6 +114,16 @@ using Test, DataFrames, NewickTree, Distributions, Bijectors
         @test isfinite(xs[end].ℓ)
     end
 
+    @testset "Condition" begin
+        c = TwoTypeDLModel.default_condition(tree2, 10)
+        @test !c((og=0,  ob=0, on=0, osi=0, or=0, osj=0))
+        @test  c((og=1,  ob=0, on=0, osi=1, or=0, osj=0))
+        @test !c((og=1,  ob=0, on=0, osi=0, or=0, osj=0))
+        @test !c((og=11, ob=0, on=0, osi=0, or=0, osj=0))
+        @test !c((og=11, ob=1, on=1, osi=2, or=1, osj=1))
+        @test  c((og=9,  ob=1, on=1, osi=2, or=1, osj=1))
+    end
+
 end
 
 
