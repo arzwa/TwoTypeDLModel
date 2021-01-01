@@ -70,8 +70,8 @@ function getmodel(model, priors, x)
 end 
 
 getrootprior(p::GeometricPrior, θ) = p(r=θ[end])
-getrootprior(p::BetaGeometricPrior, θ) = p(r=θ[5], n=θ[6]) 
-getrootprior(p::BBGPrior, θ) = p(r=θ[5], n=θ[6]) 
+getrootprior(p::BetaGeometricPrior, θ) = p(r=θ[5], ζ=θ[6]) 
+getrootprior(p::BBGPrior, θ) = p(r=θ[5], ζ=θ[6]) 
 
 # logdensity, loglhood, logprior
 logdensity(chain) = chain.state.ℓ + chain.state.p

@@ -60,19 +60,19 @@ by one to ensure the distribution is proper (?). So the `n` in this struct
 should be `α + β - 1`.
 """
 struct BetaGeometricPrior{T} <: RootPrior{T}
-    m::T  # mean
-    n::T  # 'sample size' - 1
+    η::T  # mean
+    ζ::T  # 'sample size' - 1
     r::T  
 end
 
-Base.NamedTuple(θ::BetaGeometricPrior) = (m=θ.m, n=θ.n, r=θ.r)
+Base.NamedTuple(θ::BetaGeometricPrior) = (η=θ.η, ζ=θ.ζ, r=θ.r)
 (θ::BetaGeometricPrior)(; kwargs...) = BetaGeometricPrior(merge(NamedTuple(θ), (; kwargs...))...)
-getαβ(d::BetaGeometricPrior) = d.m * (1 + d.n), (1 - d.m) * (1 + d.n)
+getαβ(d::BetaGeometricPrior) = d.η * (1 + d.ζ), (1 - d.η) * (1 + d.ζ)
 
 function Base.rand(d::BetaGeometricPrior)
     α, β = getαβ(d)
     η = rand(Beta(α, β))
-    η = η <= zero(η) ? 1e-7 : η >= one(η) ? 1-1e-7 : η
+    η = η <= zero(η) ? 1e-16 : η >= one(η) ? 1-1e-16 : η
     Z = rand(Geometric(η))
     X2 = rand(Binomial(Z, 1. - d.r))
     X1 = Z - X2 + 1
@@ -95,23 +95,23 @@ restrict the domain, and the unrestricted Beta-Geometric distribution can
 give real large samples.
 """
 struct BoundedBetaGeometricPrior{T,D} <: RootPrior{T}
-    m::T
-    n::T
+    η::T
+    ζ::T
     r::T
     d::D
 end
 
-function BoundedBetaGeometricPrior(m::T, n::T, r::T, support::D) where {T,D<:UnitRange}
-    α = m * (1 + n)
-    β = (1 - m) * (1 + n)
+function BoundedBetaGeometricPrior(η::T, ζ::T, r::T, support::D) where {T,D<:UnitRange}
+    α = η * (1 + ζ)
+    β = (1 - η) * (1 + ζ)
     p = exp.([logbeta(α + 1, β + Z - 1) - logbeta(α, β) for Z=support])
     d = DiscreteNonParametric(support, p ./ sum(p))
-    BoundedBetaGeometricPrior(m, n, r, d)
+    BoundedBetaGeometricPrior(η, ζ, r, d)
 end
 
 const BBGPrior{T,D} = BoundedBetaGeometricPrior{T,D} where {T,D}
 
-Base.NamedTuple(θ::BoundedBetaGeometricPrior) = (m=θ.m, n=θ.n, r=θ.r, support=θ.d.support)
+Base.NamedTuple(θ::BoundedBetaGeometricPrior) = (η=θ.η, ζ=θ.ζ, r=θ.r, support=θ.d.support)
 (θ::BoundedBetaGeometricPrior)(; kwargs...) = BBGPrior(merge(NamedTuple(θ), (; kwargs...))...)
 
 function Base.rand(d::BoundedBetaGeometricPrior)
