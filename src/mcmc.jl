@@ -65,13 +65,13 @@ function getmodel(model, priors, x)
     λ  = θ[1]*μ₂
     μ₁ = θ[2]*μ₂
     ν  = θ[3]*μ₂
-    rootprior = length(θ) > 4 ? getrootprior(model.prior, θ) : model.prior
+    rootprior = length(θ) > 4 ? getrootprior(model.prior, θ[5:end]) : model.prior
     return model(TwoTypeDL(λ=λ, μ₁=μ₁, ν=ν, μ₂=μ₂), rootprior)
 end 
 
-getrootprior(p::GeometricPrior, θ) = p(r=θ[end])
-getrootprior(p::BetaGeometricPrior, θ) = p(r=θ[5], ζ=θ[6]) 
-getrootprior(p::BBGPrior, θ) = p(r=θ[5], ζ=θ[6]) 
+getrootprior(p::GeometricPrior, θ) = p(r=θ[1])
+getrootprior(p::Union{BetaGeometricPrior,BBGPrior}, θ) = 
+    length(θ) > 1 ? p(r=θ[1], ζ=θ[2]) : p(r=θ[1])
 
 # logdensity, loglhood, logprior
 logdensity(chain) = chain.state.ℓ + chain.state.p
