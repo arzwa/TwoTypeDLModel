@@ -37,9 +37,17 @@ julia> TwoTypeDLModel.simulate(model, 3)
 """
 function simulate(m::TwoTypeTree, n, condition=default_condition(m.tree))
     df = map(i->simulate(m.params, rand(m.prior), m.tree, condition), 1:n) |> DataFrame
-    ddf = select(df, names(df) .=> x->first.(x) .+ last.(x))
+    ddf = select(df, names(df) .=> x->sum.(x))
     rename!(ddf, names(df))
     ddf, df
+end
+
+function simulate(p, X, tree, condition=x->true)
+    x = simulate(p, X, tree)
+    while !condition(x)
+        x = simulate(p, X, tree)
+    end
+    return x
 end
 
 """
@@ -63,19 +71,11 @@ function default_condition(tree, maxn=Inf)
 end
 
 """
-    simulate(θ::TwoTypeDL, X, tree, [condition::Function])
+    simulate(θ, X, tree)
 
 Simulate the two-type branching process model with parameters `θ` along a tree
 `tree` with root state `X`.
 """
-function simulate(p, X, tree, condition=x->true)
-    x = simulate(p, X, tree)
-    while !condition(x)
-        x = simulate(p, X, tree)
-    end
-    return x
-end
-
 function simulate(p::TwoTypeDL, X::Tuple, tree)
     result = Dict{Symbol,Tuple{Int,Int}}()
     function simwalk(node, X)
@@ -115,4 +115,66 @@ function _simulate(p::TwoTypeDL, X, t)
         t -= randexp()/sum(rates)
     end
     return X
+end
+
+
+# Ideal two-type model
+# ====================
+# In the ideal two-type model we model the evolution of functionally redundant
+# groups. The state is now represented by a vector of integers, recording the
+# number of gene copies for each functional group. *functionalization events
+# give rise to a new group of size 1.
+"""
+    getrates(θ::IdealTwoTypeDL, x::Vector)
+
+Get the total event rate, the total event rate for each functional group, and
+the individual within group event rates.
+"""
+function getrates(θ::IdealTwoTypeDL, x)
+	@unpack λ, μ₁, μ₂, ν = θ
+	rates = map(x) do n
+		n == 1 ? [λ, μ₁, 0.] : [n*λ, n*μ₂, n*ν]
+	end
+	grouprates = sum.(rates)
+	return sum(grouprates), grouprates, rates
+end
+
+"""
+    simulate(θ::IdealTwoTypeDL, x, t)
+
+Simulate the ideal two-type DL model for a time interval `t`. The state `x` is
+a vector of integers, representing the number of genes in each redundant group.
+"""
+function simulate(θ::IdealTwoTypeDL, x, t::Real)
+	x = copy(x)
+	r, gr, rs = getrates(θ, x)
+	t -= randexp() / r
+	while t > 0.
+		group = sample(1:length(gr), Weights(gr))
+		event = sample(1:3, Weights(rs[group]))
+		if event == 1
+			x[group] += 1
+		elseif event == 2
+			x[group] -= 1
+		elseif event == 3
+			x[group] -= 1
+			push!(x, 1)
+		end
+		r, gr, rs = getrates(θ, x)
+		t -= randexp() / r
+	end
+	return x
+end
+
+function simulate(θ::IdealTwoTypeDL, x::T, tree::Node) where T
+    result = Dict{Symbol,T}()
+    function simwalk(node, X)
+        _X = simulate(θ, X, distance(node))
+        isleaf(node) && return result[Symbol(name(node))] = _X
+        for c in children(node)
+            simwalk(c, _X)
+        end
+    end
+    simwalk(tree, x)
+    return (; result...)
 end

@@ -28,7 +28,7 @@ the gene tree, assuming a geometric distribution for the total number Z, and
 assuming X₂ ~ Binomial(Z-1, 1-r), X₂ = Z - X₁. Using this law we get a marginal
 geometric distribution at the root and at least one type 1 gene.
 """
-struct GeometricPrior{T} <: RootPrior{T}
+struct GeometricPrior{T} <: RootPrior
     η::T
     r::T
 end
@@ -59,7 +59,7 @@ The Beta distribution is no parameterized by α and β however, but by the mean
 by one to ensure the distribution is proper (?). So the `n` in this struct 
 should be `α + β - 1`.
 """
-struct BetaGeometricPrior{T} <: RootPrior{T}
+struct BetaGeometricPrior{T} <: RootPrior
     η::T  # mean
     ζ::T  # 'sample size' - 1
     r::T  
@@ -94,7 +94,7 @@ Often this is preferred over the BetaGeometricPrior I think, since often we
 restrict the domain, and the unrestricted Beta-Geometric distribution can
 give real large samples.
 """
-struct BoundedBetaGeometricPrior{T,D} <: RootPrior{T}
+struct BoundedBetaGeometricPrior{T,D} <: RootPrior
     η::T
     ζ::T
     r::T
@@ -126,3 +126,19 @@ function Distributions.logpdf(d::BoundedBetaGeometricPrior, X1, X2)
     Z = X1 + X2
     return logpdf(d.d, Z) + logpdf(Binomial(Z-1, d.r), X1-1)
 end
+
+# wrapper for the IdealTwoTypeDL model
+struct IdealModelPrior{P} <: RootPrior
+    p::P
+end
+
+function Base.rand(d::IdealModelPrior)
+    X1, X2 = rand(d.p)
+    x = ones(Int, X1)
+    for i=1:X2
+        x[rand(1:X1)] += 1
+    end
+    return x
+end
+
+

@@ -38,7 +38,7 @@ using Parameters, DataFrames, NewickTree, StatsBase, StatsFuns, Distributions
 export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
 export CountDAG, Profiles, simulate, PSettings
 
-abstract type RootPrior{T} end
+abstract type RootPrior end
 
 """
     TwoTypeDL{T}
@@ -71,6 +71,20 @@ end
 # Two useful functions
 Base.NamedTuple(θ::TwoTypeDL) = (λ=θ.λ, μ₁=θ.μ₁, ν=θ.ν, μ₂=θ.μ₂)
 (θ::TwoTypeDL)(; kwargs...) = TwoTypeDL(merge(NamedTuple(θ), (; kwargs...))...)
+
+"""
+    IdealTwoTypeDL{T}
+
+An ideal two-type duplication loss model, where loss rates are dependent on the
+number of *redundant* genes (and not the number of *excess* genes). Inference
+is not defined for the this model, but we can simulate from it.
+"""
+@with_kw struct IdealTwoTypeDL{T}
+    λ ::T
+    μ₁::T
+    ν ::T
+    μ₂::T
+end
 
 """
     TwoTypeTree(tree, θ, prior)
