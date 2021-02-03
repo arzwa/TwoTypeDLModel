@@ -141,4 +141,36 @@ function Base.rand(d::IdealModelPrior)
     return x
 end
 
+"""
+    BetaGeometric(η, ζ)
 
+A beta-geometric distribution on the domain (1,2,3,...).
+"""
+struct BetaGeometric{T} <: DiscreteUnivariateDistribution 
+    η::T
+    ζ::T
+    α::T
+    β::T
+    BetaGeometric(η::T, ζ::T) where T = new{T}(η, ζ, getαβ(η, ζ)...)
+end
+
+getαβ(η, ζ) = η * ζ, (1 - η) * ζ
+BetaGeometric(η, ζ) = BetaGeometric(promote(η, ζ)...)
+
+function Base.rand(rng::AbstractRNG, d::BetaGeometric)
+    p = rand(Beta(d.α, d.β))
+    p = p <= zero(p) ? 1e-16 : p >= one(p) ? 1-1e-16 : p
+    return rand(Geometric(p))
+end
+
+Base.rand(rng::AbstractRNG, d::BetaGeometric, n::Int) = map(rand(rng, d), 1:n)
+Distributions.logpdf(d::BetaGeometric, k::Int) = 
+    logbeta(d.α + 1, d.β + k - 1) - logbeta(d.α, d.β)
+
+function Distributions.loglikelihood(d::BetaGeometric, ks::Vector{Int})
+    logp = 0.
+    for (k, count) in enumerate(ks)
+        logp += count * logpdf(d, k)
+    end
+    return logp
+end
