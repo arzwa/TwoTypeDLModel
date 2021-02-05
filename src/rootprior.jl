@@ -54,10 +54,12 @@ end
 
 A Beta-Geometric prior distribution for the two-type process. The total number
 of genes at the root Z ~ BetaGeometric(α, β), and X₂ ~ Binomial(Z-1, 1-r).
-The Beta distribution is no parameterized by α and β however, but by the mean
-`m = α / (α + β)` and 'sample size' `n = α + β`. However, we assume n is offset
-by one to ensure the distribution is proper (?). So the `n` in this struct 
-should be `α + β - 1`.
+The Beta distribution is not parameterized by α and β however, but by the mean
+`η = α / (α + β)` and 'sample size' `ζ = α + β - 1`.
+
+!!! warn
+    We assume `ζ` is offset by one to ensure the distribution behaves reasonably.
+    Please provide the value of `α + β - 1`.
 """
 struct BetaGeometricPrior{T} <: RootPrior
     η::T  # mean
@@ -93,6 +95,10 @@ end
 Often this is preferred over the BetaGeometricPrior I think, since often we 
 restrict the domain, and the unrestricted Beta-Geometric distribution can
 give real large samples.
+
+!!! warn
+    We assume `ζ` is offset by one to ensure the distribution behaves reasonably.
+    Please provide the value of `α + β - 1`.
 """
 struct BoundedBetaGeometricPrior{T,D} <: RootPrior
     η::T
@@ -167,6 +173,13 @@ Base.rand(rng::AbstractRNG, d::BetaGeometric, n::Int) = map(rand(rng, d), 1:n)
 Distributions.logpdf(d::BetaGeometric, k::Int) = 
     logbeta(d.α + 1, d.β + k - 1) - logbeta(d.α, d.β)
 
+"""
+   loglikelihood(d::BetaGeometric, ks::Vector{Int})
+
+Loglikelihod for a vector of counts `ks`, i.e. `[x1, x2, x3, ...]` where `x1`
+is the number of times k=1 is observed in the data, `x2` the number of times
+k=2 is observed, etc.
+"""
 function Distributions.loglikelihood(d::BetaGeometric, ks::Vector{Int})
     logp = 0.
     for (k, count) in enumerate(ks)

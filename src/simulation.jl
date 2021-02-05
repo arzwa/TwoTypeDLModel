@@ -118,8 +118,8 @@ function _simulate(p::TwoTypeDL, X, t)
 end
 
 
-# Ideal two-type model
-# ====================
+# Ideal two-type model (DLF model)
+# ================================
 # In the ideal two-type model we model the evolution of functionally redundant
 # groups. The state is now represented by a vector of integers, recording the
 # number of gene copies for each functional group. *functionalization events
@@ -178,3 +178,29 @@ function simulate(θ::IdealTwoTypeDL, x::T, tree::Node) where T
     simwalk(tree, x)
     return (; result...)
 end
+
+# Posterior predictive simulation
+# ===============================
+"""
+    ppsim(models, N, [cond])
+
+Perform posterior predictive simulations of data sets of size `N` for a bunch
+of model objects.
+"""
+function ppsim(models::AbstractVector, N::Int, 
+               cond=default_condition(models[1].tree, Inf))
+    ys = tmap(model->simfun(model, N, x->cond(x)), models)
+    return vcat(ys...)
+end
+
+function simfun(model, N, cond)
+    X, Y = TwoTypeDLModel.simulate(model, N, cond)
+    getprops_taxa(X)
+end
+
+function getprops_taxa(X)
+    y = mapreduce(x->proportions(x, 0:9), hcat, eachcol(X))
+    z = proportions(Matrix(X), 0:9)
+    DataFrame(hcat(0:9, z, y), vcat(:k, :all, Symbol.(names(X))))
+end
+

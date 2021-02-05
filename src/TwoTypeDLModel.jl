@@ -34,6 +34,7 @@ module TwoTypeDLModel
 
 using FFTW, DifferentialEquations, Random, SpecialFunctions, LightGraphs
 using Parameters, DataFrames, NewickTree, StatsBase, StatsFuns, Distributions
+using ThreadTools
 
 export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
 export CountDAG, Profiles, simulate, PSettings
