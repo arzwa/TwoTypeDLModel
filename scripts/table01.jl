@@ -10,12 +10,14 @@ prefix = "ygob-8taxa"  # drosophila-8taxa | GO:0002376
 tree   = readnw(readline("data/$prefix.nw"))
 rdata  = CSV.read("data/$prefix-max10-oib.csv", DataFrame)
 pth    = mkpath("output/table01")
+root   = Dict("ygob-8taxa"                 => (0.98, 3.06), 
+              "drosophila-8taxa"           => (0.96, 3.01),
+              "primates-GO:0002376-11taxa" => (0.92, 2.23))
 
 # Two-type DL model
 # =================
 # set root prior 
-ETA = 0.98
-ZETA = 4.06 - 1
+ETA, ZETA = root[prefix]
 rprior = TwoTypeDLModel.BBGPrior(ETA, ZETA, 0.5, 1:(settings.n-1)*2)
 
 # settings, data, model, priors

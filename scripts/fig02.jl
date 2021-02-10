@@ -58,9 +58,9 @@ sumry(x) = @printf "  %.3f (%.3f, %.3f)\n" mean(x) quantile(x, 0.025) quantile(x
 
 # All three data sets
 X = map([
-       CSV.read("../data/drosophila-8taxa-max10-oib.csv", DataFrame),
-       CSV.read("../data/ygob-8taxa-max10-oib.csv", DataFrame),
-       CSV.read("../data/primates-subsets/GO:0002376-oib-max10.csv", DataFrame)
+       CSV.read("data/drosophila-8taxa-max10-oib.csv", DataFrame),
+       CSV.read("data/ygob-8taxa-max10-oib.csv", DataFrame),
+       CSV.read("data/primates-GO:0002376-oib-max10.csv", DataFrame)
       ]) do df
     Xall = filter(x->x>0, vec(Matrix(df)))
     Xcount = counts(Xall)
