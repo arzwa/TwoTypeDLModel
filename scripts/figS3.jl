@@ -6,7 +6,9 @@ using TwoTypeDLModel: IdealTwoTypeDL, IdealModelPrior, BBGPrior
 using DataFrames, CSV, NewickTree, Distributions
 using Serialization, Printf
 
-tree  = readnw(readline("data/drosophila-8taxa.nw"))
+const ETA = 0.95
+const ZETA = 4.0 - 1
+tree = readnw(readline("data/drosophila-8taxa.nw"))
 priors = (Beta(), Beta(), Beta(), Exponential(5.), Beta(), Exponential(3.))
 settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
 
@@ -15,10 +17,10 @@ function dosim(tree, eta, N)
     μ₁ = 0.1
     λ  = 0.2
     ν  = 0.2
-    η  = 0.95
-    ζ  = 3.   # recall we offset by 1 here
+    η  = ETA
+    ζ  = ZETA   # recall we offset by 1 here
     r  = 0.5
-    rootprior = IdealModelPrior(BBGPrior(η, ζ, r, 1:9))
+    rootprior = IdealModelPrior(BBGPrior(ETA, ZETA, r, 1:9))
     rates = IdealTwoTypeDL(μ₂=μ₂, μ₁=μ₁, λ=λ, ν=ν)
     simmodel = TwoTypeTree(tree, rates, rootprior)
     c = TwoTypeDLModel.default_condition(tree)
@@ -53,7 +55,7 @@ data, bound = DeadBird.CountDAG(sim.X, tree)
 @model shiftedbg(data, bound) = begin
     λ ~ Turing.FlatPos(0.)
     μ ~ Turing.FlatPos(0.)
-    ζ ~ Exponential(3) 
+    ζ ~ Exponential(ZETA) 
     η = zero(eltype(ζ)) + ETA 
     κ = zero(eltype(λ))
     rootp = ShiftedBetaGeometric(η, ζ)

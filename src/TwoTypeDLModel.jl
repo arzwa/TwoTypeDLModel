@@ -37,7 +37,7 @@ using Parameters, DataFrames, NewickTree, StatsBase, StatsFuns, Distributions
 using ThreadTools
 
 export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
-export CountDAG, Profiles, simulate, PSettings, ppsim
+export CountDAG, Profiles, simulate, PSettings, ppsim, Chain, sample
 
 abstract type RootPrior end
 
