@@ -204,3 +204,11 @@ function getprops_taxa(X)
     DataFrame(hcat(0:9, z, y), vcat(:k, :all, Symbol.(names(X))))
 end
 
+function quantiles(sims::Matrix; trans=log10, qs=[0.025, 0.975])
+    ϵ = minimum(sims[sims .!= 0]) / 10
+    Yk = trans.(sims .+ ϵ)
+    Qs = mapslices(x->vcat(mean(x), quantile(x, [0.025, 0.975])), Yk, dims=2)
+    Qs[:,2] .= abs.(Qs[:,2] .- Qs[:,1])
+    Qs[:,3] .= abs.(Qs[:,3] .- Qs[:,1])
+    Qs
+end

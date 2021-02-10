@@ -150,7 +150,8 @@ end
 """
     BetaGeometric(η, ζ)
 
-A beta-geometric distribution on the domain (1,2,3,...).
+A beta-geometric distribution on the domain (1,2,3,...).  Note that `ζ` is not
+offset by one.
 """
 struct BetaGeometric{T} <: DiscreteUnivariateDistribution 
     η::T
