@@ -1,6 +1,6 @@
 # Code for conducting simulations as shown in figure 3 
 using TwoTypeDLModel
-using DataFrames, CSV, NewickTree
+using DataFrames, CSV, NewickTree, Distributions
 using Serialization, Printf
 
 # Simulation and inference for two-type model
@@ -31,7 +31,7 @@ end
 
 # N, n = 10_000, 11_000  # number of families, number of samples
 N, n = 100, 110
-sim = dosim(tree, eta, N)
+sim = dosim(tree, ETA, N)
 @info maximum(Matrix(sim.X))
 
 pth = mkpath("output/fig03")
