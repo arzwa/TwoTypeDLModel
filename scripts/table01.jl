@@ -6,22 +6,22 @@ using DataFrames, CSV, NewickTree, Distributions
 using Serialization, StatsBase, ThreadTools
 using Turing
 
-prefix = "ygob-8taxa"  # drosophila-8taxa | GO:0002376
+prefix = "ygob"  # drosophila-8taxa | GO:0002376
 tree   = readnw(readline("data/$prefix.nw"))
-rdata  = CSV.read("data/$prefix-max10-oib.csv", DataFrame)
+rdata  = CSV.read("data/$prefix.csv", DataFrame)
 pth    = mkpath("output/table01")
-root   = Dict("ygob-8taxa"                 => (0.98, 3.06), 
-              "drosophila-8taxa"           => (0.96, 3.01),
-              "primates-GO:0002376-11taxa" => (0.92, 2.23))
+root   = Dict("ygob"                => (0.98, 3.06), 
+              "drosophila"          => (0.96, 3.01),
+              "primates-GO:0002376" => (0.92, 2.23))
 
 # Two-type DL model
 # =================
 # set root prior 
 ETA, ZETA = root[prefix]
+settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
 rprior = TwoTypeDLModel.BBGPrior(ETA, ZETA, 0.5, 1:(settings.n-1)*2)
 
 # settings, data, model, priors
-settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
 data  = TwoTypeDLModel.CountDAG(rdata, tree, settings.n)
 model  = TwoTypeTree(tree, TwoTypeDL(rand(4)...), rprior);
 priors = (Beta(), Beta(), Beta(), Exponential(10.), Beta())

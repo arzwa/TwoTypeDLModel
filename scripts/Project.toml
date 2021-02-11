@@ -1,5 +1,4 @@
 [deps]
-AdvancedMH = "5b7e9947-ddc0-4b3f-9b55-0d8042f74170"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DeadBird = "a6db34b6-ea8f-496d-a49f-6ef7ed1dec48"
@@ -12,4 +11,3 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 ThreadTools = "dbf13d8f-d36e-4350-8970-f3a99faba1a8"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
-TwoTypeDLModel = "00a26439-7f6c-40c2-8dbd-ef06664b8549"

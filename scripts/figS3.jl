@@ -8,7 +8,7 @@ using Serialization, Printf
 
 const ETA = 0.95
 const ZETA = 4.0 - 1
-tree = readnw(readline("data/drosophila-8taxa.nw"))
+tree = readnw(readline("data/drosophila.nw"))
 priors = (Beta(), Beta(), Beta(), Exponential(5.), Beta(), Exponential(3.))
 settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
 
