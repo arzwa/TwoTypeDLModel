@@ -42,6 +42,38 @@ function Chain(model, priors, data=nothing, settings=PSettings())
     Chain(priors, p, t, mfun, ℓfun, ℓroot)
 end
 
+"""
+    initialize!(chain, ntry=10)
+
+Initialize the chain in a reasonable way (informed by the model).  This will
+sample `μ₂` from its prior, and set `μ₁, λ, ν` each to `(1 - η)*μ₂`. We can do
+this several times and start from the position with highest log-density.
+
+!!! note
+    While I prefer completely random draws from the prior to initialize, I
+    think this is a sensible way to proceed, since we fix the root prior to a
+    certain value of `η` which *shoul* approximately correspond to `1 - λ/μ₂`.
+    Using this initialization procedure, we get random draws for μ₂, but
+    restrict the other values to conform to the expectation under `η`.
+"""
+function initialize!(chain::Chain, ntry=10)
+    best = chain.state
+    for i=1:ntry
+        μ₂ = rand(chain.priors[4])
+        η = chain.mfun.model.prior.η
+        λ = μ₁ = ν = (1 - η) * μ₂
+        θ = [λ, μ₁, ν, μ₂]
+        y = link.(chain.priors[1:4], θ)
+        x = deepcopy(chain.state.θ)
+        x[1:4] .= y
+        ℓ, L = chain.ℓfun(x)
+        p = logprior(chain, x)
+        @info "" (ℓ + p) θ
+        ℓ + p > (best.ℓ + best.p) && (best = Transition(x, ℓ, p, L))
+    end
+    chain.state = best
+end
+
 function Base.show(io::IO, c::Chain) 
     s = @sprintf(" %8.4f", logdensity(c))
     s *= join([@sprintf("%8.4f ", x) for x in c.state.θ])
