@@ -59,17 +59,15 @@ this several times and start from the position with highest log-density.
 function initialize!(chain::Chain, ntry=10)
     best = chain.state
     for i=1:ntry
-        μ₂ = rand(chain.priors[4])
-        η = chain.mfun.model.prior.η
-        λ = μ₁ = ν = (1 - η) * μ₂
-        θ = [λ, μ₁, ν, μ₂]
-        y = link.(chain.priors[1:4], θ)
-        x = deepcopy(chain.state.θ)
-        x[1:4] .= y
-        ℓ, L = chain.ℓfun(x)
-        p = logprior(chain, x)
+        θ = vcat(rand.(chain.priors)...)  # draw from prior
+        η = chain.mfun.model.prior.η  # the η value is fixed for the root
+        θ[1:3] .= (1 - η)  # ≈ λ/μ₂
+        y = TwoTypeDLModel.link.(chain.priors, θ)  # to ℝ
+        y[1:3] .+= randn(3)  # some variation on the ratios
+        ℓ, L = chain.ℓfun(y)
+        p = TwoTypeDLModel.logprior(chain, y)
         @info "" (ℓ + p) θ
-        ℓ + p > (best.ℓ + best.p) && (best = Transition(x, ℓ, p, L))
+        ℓ + p > (best.ℓ + best.p) && (best = TwoTypeDLModel.Transition(y, ℓ, p, L))
     end
     chain.state = best
 end
@@ -171,3 +169,13 @@ function post(chain, samples)
     end
     (posterior=DataFrame(pdf), models=models)
 end
+
+function models_from_post(pdf, tree, rprior)
+    map(eachrow(pdf)) do row
+        r = TwoTypeDL(λ=row[:λ], μ₁=row[:μ₁], ν=row[:ν], μ₂=row[:μ₂])
+        p = get_rprior(rprior, row)
+        TwoTypeTree(tree, r, p)
+    end
+end
+
+get_rprior(rprior::BBGPrior, row) = BBGPrior(row[:η], row[:ζ], row[:r], rprior.d.support)
