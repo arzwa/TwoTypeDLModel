@@ -115,7 +115,7 @@ Perform a single iteration for a Metropolis-within-Gibbs algorithm.
 """
 function mwg_sweep!(chain)
     for (i, p) in enumerate(chain.proposals)
-        x = copy(chain.state.θ)
+        x = deepcopy(chain.state.θ)
         x[i] += rand(p)
         if i < 5  # process parameters
             ℓ_, L_ = chain.ℓfun(x) 

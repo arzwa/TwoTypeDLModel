@@ -38,6 +38,7 @@ using ThreadTools
 
 export TwoTypeDL, GeometricPrior, BetaGeometricPrior, TwoTypeTree
 export CountDAG, Profiles, simulate, PSettings, ppsim, Chain, sample
+export initialize!
 
 abstract type RootPrior end
 
