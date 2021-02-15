@@ -66,7 +66,7 @@ function initialize!(chain::Chain, ntry=10)
         y[1:3] .+= randn(3)  # some variation on the ratios
         ℓ, L = chain.ℓfun(y)
         p = TwoTypeDLModel.logprior(chain, y)
-        @info "" (ℓ + p) θ
+        @info "" (ℓ + p) θ; flush(stdout)
         ℓ + p > (best.ℓ + best.p) && (best = TwoTypeDLModel.Transition(y, ℓ, p, L))
     end
     chain.state = best
@@ -147,6 +147,7 @@ function StatsBase.sample(chain, n; progress=true)
             x = mwg_sweep!(chain)
             push!(samples, x)
             progress && (println(join([@sprintf("%7.4f", xi) for xi in x.θ], " ")))
+            flush(stdout); flush(stderr)
         catch e
             @info "Sampler interrupted" e
             return samples
