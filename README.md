@@ -1,4 +1,7 @@
-Arthur Zwaenepoel 2020 <arzwa@psb.vib-ugent.be>
+[![build](https://github.com/arzwa/TwoTypeDLModel/actions/workflows/workflow.yaml/badge.svg)](https://github.com/arzwa/TwoTypeDLModel/actions/workflows/workflow.yaml)
+[![](https://img.shields.io/badge/docs-dev-blue.svg)](https://arzwa.github.io/TwoTypeDLModel/dev/index.html)
+
+Arthur Zwaenepoel 2021 <arzwa@psb.vib-ugent.be>
 
 # TwoTypeDLModel
 
@@ -32,4 +35,4 @@ is that type 2 genes get lost at a higher rate than type 1 genes, and that type
 neofunctionalization) and become stably incorporated type 1 genes.
 
 For more information, consult the
-[documentation](https://arzwa.github.io/TwoTypeDLModel.jl/dev/index.html)
+[documentation](https://arzwa.github.io/TwoTypeDLModel/dev/index.html)
