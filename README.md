@@ -28,10 +28,10 @@ incremented by one with immigration and birth rate `λ` and death rate `μ₂`.
 
 Here we can roughly think of the number of type 1 particles denoting the number
 of groups of redundant genes in a family, or the number of more or less
-essential genes in the family, while the number of type 2 particles reflects
-the number of excess genes in a family. The most important aspect of the model
-is that type 2 genes get lost at a higher rate than type 1 genes, and that type
-2 genes can get established (capturing the processes of 'complete'  sub- and
+essential genes per family, while the number of type 2 particles reflects the
+number of excess genes per family. The most important aspect of the model is
+that type 2 genes get lost at a higher rate than type 1 genes, and that type 2
+genes can get established (capturing the processes of 'complete' sub- and
 neofunctionalization) and become stably incorporated type 1 genes.
 
 For more information, consult the
