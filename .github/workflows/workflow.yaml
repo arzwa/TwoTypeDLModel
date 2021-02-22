@@ -37,7 +37,7 @@ jobs:
       - run: |
           julia --color=yes --check-bounds=yes --inline=yes --project=@. --depwarn=yes -e '
             using Pkg
-            Pkg.add("https://github.com/arzwa/AdvancedMH.jl", rev="twotypedl")
+            Pkg.add(url="https://github.com/arzwa/AdvancedMH.jl", rev="twotypedl")
             Pkg.test(coverage=false)'
   docs: 
     name: Documentation
@@ -50,7 +50,7 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Pkg
-            Pkg.add("https://github.com/arzwa/AdvancedMH.jl", rev="twotypedl")
+            Pkg.add(url="https://github.com/arzwa/AdvancedMH.jl", rev="twotypedl")
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()'
       - run: julia --project=docs docs/make.jl
