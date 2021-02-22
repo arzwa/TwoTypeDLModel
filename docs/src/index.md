@@ -133,8 +133,9 @@ using TwoTypeDLModel, Plots, StatsPlots
 and read in the data
 
 ```@example index
-rdata = CSV.read("../data/drosophila-8taxa-max10-oib.csv", DataFrame)
-tree  = readnw(readline("../data/drosophila-8taxa.nw"));
+datadir = "../../scripts/data"
+rdata = CSV.read("$datadir/drosophila.csv", DataFrame)
+tree  = readnw(readline("$datadir/drosophila.nw"));
 nothing #hide
 ```
 
@@ -352,6 +353,16 @@ priors = (Beta(), Beta(), Beta(), Exponential(10.), Beta())
 
 Optionally, we may add a prior for $\zeta$ at the end of this tuple, in which
 case $\zeta$ will also be treated as random.
+
+We may to first take a sample from the prior distribution, to verify it looks
+reasonable
+
+```@example index
+chn = TwoTypeDLModel.Chain(model, priors, nothing, settings)
+spl = sample(chn, 10000, progress=false);
+p, m = TwoTypeDLModel.post(chn, spl);
+describe(p[:,1:4], :mean=>mean, :q=>x->Tuple(quantile(x, [0.025, 0.975])))
+```
 
 We can sample from the posterior distribution using the following code
 

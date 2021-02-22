@@ -1,0 +1,29 @@
+id,name,genus,ftp_dir,accession,species,source
+dere,D. erecta,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/7220/101/GCF_003286155.1_DereRS2/,GCF_003286155.1_DereRS2,erecta,NCBI
+dana,D. ananassae,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/7217/101/GCF_003285975.2_DanaRS2.1/,GCF_003285975.2_DanaRS2.1,ananassae,NCBI
+dsim,D. simulans,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/754/195/GCF_000754195.2_ASM75419v2/,GCF_000754195.2_ASM75419v2,simulans,NCBI
+dper,D. persimilis,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/7234/101/GCF_003286085.1_DperRS2/,GCF_003286085.1_DperRS2,persimilis,NCBI
+dpse,D. pseudoobscura,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/7237/104/GCF_009870125.1_UCI_Dpse_MV25/,GCF_009870125.1_UCI_Dpse_MV25,pseudoobscura,NCBI
+dmel,D. melanogaster,Drosophila,ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/215/GCF_000001215.4_Release_6_plus_ISO1_MT/,GCF_000001215.4_Release_6_plus_ISO1_MT,melanogaster,NCBI
+dyak,D. yakuba,Drosophila,ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/975/GCF_000005975.2_dyak_caf1/,GCF_000005975.2_dyak_caf1,yakuba,NCBI
+dsec,D. sechellia,Drosophila,https://ftp.ncbi.nlm.nih.gov/genomes/all/annotation_releases/7238/101/GCF_004382195.1_ASM438219v1/,GCF_004382195.1_ASM438219v1,sechellia,NCBI
+Ecymbalariae,E. cymbalariae,Eremothecium,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Ecymbalariae,cymbalariae,"YGOB, v7-Aug2012"
+Egossypii,E. gossypii,Eremothecium,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Egossypii,gossypii,"YGOB, v7-Aug2012"
+Klactis,K. lactis,Kluyveromyces,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Klactis,lactis,"YGOB, v7-Aug2012"
+Lkluyveri,L. kluyveri,Lachancea,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Lkluyveri,kluyveri,"YGOB, v7-Aug2012"
+Lthermotolerans,L. thermotolerans,Lachancea,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Lthermotolerans,thermotolerans,"YGOB, v7-Aug2012"
+Lwaltii,L. waltii,Lachancea,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Lwaltii,waltii,"YGOB, v7-Aug2012"
+Tdelbrueckii,T. delbrueckii,Torulaspora,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Tdelbrueckii,delbrueckii,"YGOB, v7-Aug2012"
+Zrouxii,Z. rouxii,Zygosaccharomyces,http://ygob.ucd.ie/ygob/data/v7-Aug2012/,Zrouxii,rouxii,"YGOB, v7-Aug2012"
+Hsapi,H. sapiens,Homo,ftp://ftp.ensembl.org/pub/release-102/fasta/homo_sapiens/cds/Homo_sapiens.GRCh38.cds.all.fa.gz,Homo_sapiens.GRCh38,sapiens,"Ensembl, release 102"
+Ptrog,P. troglodytes,Pan,ftp://ftp.ensembl.org/pub/release-102/fasta/pan_troglodytes/cds/Pan_troglodytes.Pan_tro_3.0.cds.all.fa.gz,Pan_troglodytes.Pan_tro_3.0,troglodytes,"Ensembl, release 102"
+Pabel,P. abelii,Pongo,ftp://ftp.ensembl.org/pub/release-102/fasta/pongo_abelii/cds/Pongo_abelii.PPYG2.cds.all.fa.gz,Pongo_abelii.PPYG2,abelii,"Ensembl, release 102"
+Nleuc,N. leucogenys,Nomascus,ftp://ftp.ensembl.org/pub/release-102/fasta/nomascus_leucogenys/cds/Nomascus_leucogenys.Nleu_3.0.cds.all.fa.gz,Nomascus_leucogenys.Nleu_3.0,leucogenys,"Ensembl, release 102"
+Mmula,M. mulatta,Macaca,ftp://ftp.ensembl.org/pub/release-102/fasta/macaca_mulatta/cds/Macaca_mulatta.Mmul_10.cds.all.fa.gz,Macaca_mulatta.Mmul_10,mulatta,"Ensembl, release 102"
+Panub,P. anubis,Papio,ftp://ftp.ensembl.org/pub/release-102/fasta/papio_anubis/cds/Papio_anubis.Panu_3.0.cds.all.fa.gz,Papio_anubis.Panu_3.0,anubis,"Ensembl, release 102"
+Csaba,C. sabaeus,Chlorocebus,ftp://ftp.ensembl.org/pub/release-102/fasta/chlorocebus_sabaeus/cds/Chlorocebus_sabaeus.ChlSab1.1.cds.all.fa.gz,Chlorocebus_sabaeus.ChlSab1.1,sabaeus,"Ensembl, release 102"
+Cjacc,C. jacchus,Callithrix,ftp://ftp.ensembl.org/pub/release-102/fasta/callithrix_jacchus/cds/Callithrix_jacchus.ASM275486v1.cds.all.fa.gz,Callithrix_jacchus.ASM275486v1,jacchus,"Ensembl, release 102"
+Csyri,C. syrichta,Carlito,ftp://ftp.ensembl.org/pub/release-102/fasta/carlito_syrichta/cds/Carlito_syrichta.Tarsius_syrichta-2.0.1.cds.all.fa.gz,Carlito_syrichta.Tarsius_syrichta-2.0.1,syrichta,"Ensembl, release 102"
+Mmuri,M. murinus,Microcebus,ftp://ftp.ensembl.org/pub/release-102/fasta/microcebus_murinus/cds/Microcebus_murinus.Mmur_3.0.cds.all.fa.gz,Microcebus_murinus.Mmur_3.0,murinus,"Ensembl, release 102"
+Pcoqu,P. coquereli,Propithecus,ftp://ftp.ensembl.org/pub/release-102/fasta/propithecus_coquereli/cds/Propithecus_coquereli.Pcoq_1.0.cds.all.fa.gz,Propithecus_coquereli.Pcoq_1.0,coquereli,"Ensembl, release 102"
+Ogarn,O. garnettii,Otolemur,ftp://ftp.ensembl.org/pub/release-102/fasta/otolemur_garnettii/cds/Otolemur_garnettii.OtoGar3.cds.all.fa.gz,Otolemur_garnettii.OtoGar3,garnettii,"Ensembl, release 102"

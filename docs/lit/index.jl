@@ -121,8 +121,8 @@ using TwoTypeDLModel, Plots, StatsPlots
 
 # and read in the data
 datadir = "../../scripts/data"
-rdata = CSV.read("$datadir/drosophila-8taxa-max10-oib.csv", DataFrame)
-tree  = readnw(readline("$datadir/drosophila-8taxa.nw"));
+rdata = CSV.read("$datadir/drosophila.csv", DataFrame)
+tree  = readnw(readline("$datadir/drosophila.nw"));
 
 # ### Fitting a stationary model to the non-extinct families
 
