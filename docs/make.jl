@@ -23,3 +23,4 @@ makedocs(
     doctest = false,
     pages = ["Index" => "index.md"])
 
+deploydocs(repo = "https://github.com/arzwa/TwoTypeDLModel")
