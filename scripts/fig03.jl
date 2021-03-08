@@ -1,4 +1,5 @@
 # Code for conducting simulations as shown in figure 3 
+# Author: Arthur Zwaenepoel
 using TwoTypeDLModel
 using DataFrames, CSV, NewickTree, Distributions
 using Serialization, Printf

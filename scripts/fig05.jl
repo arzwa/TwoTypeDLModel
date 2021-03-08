@@ -1,3 +1,5 @@
+# Code for Figure 5
+# Author: Arthur Zwaenepoel
 using Pkg; Pkg.activate("..")
 using TwoTypeDLModel
 Pkg.activate(".")

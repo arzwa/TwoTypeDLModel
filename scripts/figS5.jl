@@ -1,4 +1,4 @@
-# Code for simulations shown in figure S3
+# Code for simulations shown in figure S5
 # This involves simulating from the DLF model, and performing inference
 # using the two-type model
 using TwoTypeDLModel

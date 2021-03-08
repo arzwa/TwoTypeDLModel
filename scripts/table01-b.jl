@@ -1,5 +1,5 @@
 # Code for the main results, listed in table 1, single-type models
-# Arthur Zwaenepoel
+# Author: Arthur Zwaenepoel
 using TwoTypeDLModel
 using TwoTypeDLModel: BetaGeometric
 using DataFrames, CSV, NewickTree, Distributions

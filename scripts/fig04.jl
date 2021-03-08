@@ -1,5 +1,5 @@
 # Code for producing figure 4 and related supplementary material
-# Arthur Zwaenepoel
+# Author: Arthur Zwaenepoel
 
 # Comparing posterior predictive distribution of the two-type model to the
 # single-type model
