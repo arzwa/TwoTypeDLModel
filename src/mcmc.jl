@@ -16,6 +16,8 @@ struct Transition{T}
     L::Array{T,3}
 end
 
+tostate(t::Transition) = (θ=t.θ, ℓ=t.ℓ, p=t.p)  # without L, for storage (don't bloat memory!)
+
 """
     Chain(model, priors, data, settings)
 
@@ -129,7 +131,7 @@ function mwg_sweep!(chain)
         end
         AdvancedMH.consider_adaptation!(p)
     end
-    return chain.state
+    return tostate(chain.state)
 end
 
 """
@@ -139,7 +141,8 @@ Take `n` samples from the chain, returns intermediate results when interrupted.
 """
 function StatsBase.sample(chain, n; progress=true)
     i = 0
-    samples = typeof(chain.state)[]
+    x = tostate(chain.state)
+    samples = typeof(x)[x]
     while i <= n
         i += 1
         try

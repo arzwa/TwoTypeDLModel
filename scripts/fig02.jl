@@ -1,7 +1,11 @@
 # Code for producing figure 2
 # Author: Arthur Zwaenepoel
-using Turing, Distributions, StatsBase, CSV, DataFrames, TwoTypeDLModel
+using Pkg
+Pkg.activate("..")
+using TwoTypeDLModel
 using TwoTypeDLModel: quantiles, BetaGeometric
+Pkg.activate(".")
+using Turing, Distributions, StatsBase, CSV, DataFrames
 using Plots, StatPlots, Printf, Parameters
 using DeadBird: stepplot, stepplot!
 

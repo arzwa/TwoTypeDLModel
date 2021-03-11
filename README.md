@@ -36,3 +36,8 @@ neofunctionalization) and become stably incorporated type 1 genes.
 
 For more information, consult the
 [documentation](https://arzwa.github.io/TwoTypeDLModel/dev/index.html)
+
+## Reference
+
+Zwaenepoel & Van de Peer *in preparation*
+
