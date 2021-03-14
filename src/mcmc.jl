@@ -100,7 +100,7 @@ function initialize!(chain::Chain, ntry=10; progress=true)
         if log(rand()) < ℓ + p - logdensity(chain)
             chain.state = Transition(y, ℓ, p, L)
         end
-        progress && print_progress(y)
+        progress && print_progress(chain.state.θ)
     end
 end
 
