@@ -5,7 +5,7 @@ using TwoTypeDLModel
 Pkg.activate(".")
 using CSV, DataFrames, Distributions, NewickTree, ThreadTools, StatsBase
 
-pdf = CSV.read("output/table01-a/drosophila/0026/chain.csv", DataFrame)
+pdf = CSV.read("output/table01-a/drosophila/7540/chain.csv", DataFrame)
 pth = mkpath("output/fig05") 
 data = CSV.read("data/drosophila.csv", DataFrame)
 tree = readnw(readline("data/drosophila.nw"))

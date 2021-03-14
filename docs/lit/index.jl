@@ -249,8 +249,12 @@ zeta, eta = mean(chain_bgeom).nt[2]
 #
 # ### Setting up the model and data
 #
-# We first specify some settings for computing the transition probability
+# We first specify some settings for computing the transition probability matrix
 settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
+
+# Note that for some data sets, numerical inaccuracies in the likelihood may
+# cause the MCMC algorithm to fail to converge. In that case you might need to
+# decrease tolerances to `1e-7` and perhaps increase `N` to e.g. 32.
 
 # Next we load the data in a directed acyclic data structure (DAG). The DAG
 # structure allows to organize the computations in an efficient manner when
@@ -301,7 +305,8 @@ describe(p[:,1:4], :mean=>mean, :q=>x->Tuple(quantile(x, [0.025, 0.975])))
 
 # We can sample from the posterior distribution using the following code
 chn = TwoTypeDLModel.Chain(model, priors, data, settings)
-spl = sample(chn, 100);
+initialize!(chn, 10)  # first do 10 generations of independence sampling
+spl = sample(chn, 100);  # the main MCMC algorithm
 
 # Of course we should sample much longer (about 11000, discarding 1000 as
 # burn-in should do usually). To obtain the posterior distribution and model

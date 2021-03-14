@@ -4,7 +4,6 @@ using TwoTypeDLModel
 using TwoTypeDLModel: BetaGeometric
 using DataFrames, CSV, NewickTree, Distributions
 using Serialization, StatsBase, ThreadTools
-using Turing
 
 prefix = "primates-GO:0002376"  # drosophila-8taxa | GO:0002376
 suffix = string(rand())[3:6]  # terrible unique suffix
@@ -14,24 +13,25 @@ pth    = mkpath("output/table01-a/$prefix/$suffix")
 root   = Dict("ygob"                => (0.98, 3.06), 
               "drosophila"          => (0.96, 3.01),
               "primates-GO:0002376" => (0.92, 2.23))
-#              prefix               => (η   , ζ-1 )
+
+meanμ  = Dict("ygob" => 1.61, "drosophila" => 3.94, "primates-GO:0002376" => 3.46)
 
 # Two-type DL model
 # =================
 # set root prior 
 ETA, ZETA = root[prefix]
-settings = PSettings(n=12, N=16, abstol=1e-6, reltol=1e-6)
+settings = PSettings(n=16, N=32, abstol=1e-7, reltol=1e-7)
 rprior = TwoTypeDLModel.BBGPrior(ETA, ZETA, 0.5, 1:(settings.n-1)*2)
 
 # settings, data, model, priors
 data  = TwoTypeDLModel.CountDAG(rdata, tree, settings.n)
 model  = TwoTypeTree(tree, TwoTypeDL(rand(4)...), rprior);
-priors = (Beta(), Beta(), Beta(), Exponential(10.), Beta())
+priors = (Beta(), Beta(), Beta(), truncated(Exponential(meanμ[prefix]), 0, 10), Beta())
 
 # set up the chain and sample
 n, b = 11000, 1000  # n iterations, burnin
 chn = Chain(model, priors, data, settings)
-initialize!(chn, 20)
+initialize!(chn, 5)
 spl = sample(chn, n)
 p, m = TwoTypeDLModel.post(chn, spl)
 

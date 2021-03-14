@@ -44,36 +44,6 @@ function Chain(model, priors, data=nothing, settings=PSettings())
     Chain(priors, p, t, mfun, ℓfun, ℓroot)
 end
 
-"""
-    initialize!(chain, ntry=10)
-
-Initialize the chain in a reasonable way (informed by the model).  This will
-sample `μ₂` from its prior, and set `μ₁, λ, ν` each to `(1 - η)*μ₂`. We can do
-this several times and start from the position with highest log-density.
-
-!!! note
-    While I prefer completely random draws from the prior to initialize, I
-    think this is a sensible way to proceed, since we fix the root prior to a
-    certain value of `η` which *shoul* approximately correspond to `1 - λ/μ₂`.
-    Using this initialization procedure, we get random draws for μ₂, but
-    restrict the other values to conform to the expectation under `η`.
-"""
-function initialize!(chain::Chain, ntry=10)
-    best = chain.state
-    for i=1:ntry
-        θ = vcat(rand.(chain.priors)...)  # draw from prior
-        η = chain.mfun.model.prior.η  # the η value is fixed for the root
-        θ[1:3] .= (1 - η)  # ≈ λ/μ₂
-        y = TwoTypeDLModel.link.(chain.priors, θ)  # to ℝ
-        y[1:3] .+= randn(3)  # some variation on the ratios
-        ℓ, L = chain.ℓfun(y)
-        p = TwoTypeDLModel.logprior(chain, y)
-        @info "" (ℓ + p) θ; flush(stdout)
-        ℓ + p > (best.ℓ + best.p) && (best = TwoTypeDLModel.Transition(y, ℓ, p, L))
-    end
-    chain.state = best
-end
-
 function Base.show(io::IO, c::Chain) 
     s = @sprintf(" %8.4f", logdensity(c))
     s *= join([@sprintf("%8.4f ", x) for x in c.state.θ])
@@ -105,10 +75,34 @@ getrootprior(p::GeometricPrior, θ) = p(r=θ[1])
 getrootprior(p::Union{BetaGeometricPrior,BBGPrior}, θ) = 
     length(θ) > 1 ? p(r=θ[1], ζ=θ[2]) : p(r=θ[1])
 
-# logdensity, loglhood, logprior
+# logdensity, loglhood, logprior (the latter accounts for the transformations)
 logdensity(chain) = chain.state.ℓ + chain.state.p
 logprior(c, x) = sum(logpdf_with_trans.(c.priors, transform(c, x), true))
 transform(c, x::Vector) = invlink.(c.priors, x)
+
+"""
+    initialize!(chain, ntry=10)
+
+Initialize the chain using an independence MCMC sampler (informed by the
+model).  This will sample `μ₂` from its prior, and set `μ₁, λ, ν` each to `(1 -
+η)*μ₂`, with some noise added.
+"""
+function initialize!(chain::Chain, ntry=10; progress=true)
+    for i=1:ntry
+        progress && (@printf "%10d " i)
+        θ = vcat(rand.(chain.priors)...)  # draw from prior
+        η = chain.mfun.model.prior.η  # the η value is fixed for the root
+        θ[1:3] .= (1 - η)  # ≈ λ/μ₂
+        y = TwoTypeDLModel.link.(chain.priors, θ)  # to ℝ
+        y[1:3] .+= randn(3)  # some variation on the ratios
+        ℓ, L = chain.ℓfun(y)
+        p = TwoTypeDLModel.logprior(chain, y)
+        if log(rand()) < ℓ + p - logdensity(chain)
+            chain.state = Transition(y, ℓ, p, L)
+        end
+        progress && print_progress(y)
+    end
+end
 
 """
     mwg_sweep!(chain)
@@ -149,14 +143,18 @@ function StatsBase.sample(chain, n; progress=true)
             progress && (@printf "%10d " i)
             x = mwg_sweep!(chain)
             push!(samples, x)
-            progress && (println(join([@sprintf("%7.4f", xi) for xi in x.θ], " ")))
-            flush(stdout); flush(stderr)
+            progress && (print_progress(x.θ))
         catch e
             @info "Sampler interrupted" e
             return samples
         end
     end
     return samples
+end
+
+function print_progress(x) 
+    println(join([@sprintf("%7.4f", xi) for xi in x], " "))
+    flush(stdout); flush(stderr)
 end
 
 """

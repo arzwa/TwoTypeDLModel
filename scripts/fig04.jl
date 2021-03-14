@@ -12,9 +12,9 @@ nmap = Dict(x[1]=>x[2] for x in eachrow(CSV.read("data/species.csv", DataFrame))
 pth  = mkpath("output/fig04")
 
 # read in data
-input = [("drosophila", "0026"),
-         ("ygob", "2947"),
-         ("primates-GO:0002376", "6419")]
+input = [("drosophila", "7540"),
+         ("ygob", "0536"),
+         ("primates-GO:0002376", "4663")]
 
 alldata = map(input) do (prefix, suffix)
     (data = CSV.read("data/$prefix.csv", DataFrame),

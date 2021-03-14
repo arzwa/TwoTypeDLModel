@@ -110,6 +110,7 @@ using Test, DataFrames, NewickTree, Distributions, Bijectors
         d = CountDAG(X, tree2, s.n)
         prior = (Beta(), Beta(), Beta(), Exponential(5), Beta(), Exponential(5.)) 
         chain = Chain(m, prior, d, s)
+        initialize!(chain, 2, progress=false)
         xs = sample(chain, 2, progress=false)
         @test isfinite(xs[end].ℓ)
     end
