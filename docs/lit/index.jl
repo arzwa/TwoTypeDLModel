@@ -240,7 +240,7 @@ zeta, eta = mean(chain_bgeom).nt[2]
 
 # Note that a $\zeta < 1$ value may be problematic.
 
-# ## Inference for the two-type model
+# ### Inference for the two-type model
 #
 # !!! note 
 #     You will probably want to run the code below multi-threaded. Don't forget
@@ -305,7 +305,6 @@ describe(p[:,1:4], :mean=>mean, :q=>x->Tuple(quantile(x, [0.025, 0.975])))
 
 # We can sample from the posterior distribution using the following code
 chn = TwoTypeDLModel.Chain(model, priors, data, settings)
-initialize!(chn, 10)  # first do 10 generations of independence sampling
 spl = sample(chn, 100);  # the main MCMC algorithm
 
 # Of course we should sample much longer (about 11000, discarding 1000 as
