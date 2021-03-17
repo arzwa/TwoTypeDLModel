@@ -75,9 +75,9 @@ function Base.rand(d::BetaGeometricPrior)
     α, β = getαβ(d)
     η = rand(Beta(α, β))
     η = η <= zero(η) ? 1e-16 : η >= one(η) ? 1-1e-16 : η
-    Z = rand(Geometric(η))
-    X2 = rand(Binomial(Z, 1. - d.r))
-    X1 = Z - X2 + 1
+    Zm1 = rand(Geometric(η))  # this is Z - 1
+    X2 = rand(Binomial(Zm1, 1. - d.r))
+    X1 = Zm1 + 1 - X2
     (X1, X2)
 end
 

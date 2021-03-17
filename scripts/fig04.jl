@@ -75,21 +75,55 @@ end
 
 # 2. KL divergence between posterior predictive and observed
 # ==========================================================
-function kldivergence(p, q)
+"""
+    kldivergence(p, q, eps)
+
+Divergence of q from p, with smoothing `eps`
+"""
+function kldivergence(p, q, eps)
+    pp = smooth(p, eps)
+    qq = smooth(q, eps)
 	d = 0.
-	for i=1:length(p)
-		d += p[i]*(log(p[i]) - log(q[i]))
+	for i=eachindex(pp)
+		d += pp[i]*(log(pp[i]) - log(qq[i]))
 	end
 	return d
 end
 
+"""
+    smooth(x, eps)
+
+Smooth a probability vector by setting every entry < eps to eps and correcting
+the pther values accordingly.
+"""
+function smooth(x, eps) 
+    nzero = 0
+    nonzero = Int[]
+    y = similar(x)
+    for i=eachindex(x)
+        if x[i] < eps 
+            y[i] = eps 
+            nzero += 1
+        else
+            y[i] = x[i]
+            push!(nonzero, i)
+        end
+    end
+    if nzero != 0 
+        y[nonzero] .-= eps/nzero 
+    end
+    return y
+end
+            
 kldivs = map(alldata) do data
     yall = obsproportions(data.data, 0:9)
-    p = yall[:,:all]
+    col = :all
+    eps = 1/(nrow(data.data) * ncol(data.data))
+    p = yall[:,col] #yall[:,:all]
     kldiv = map(["two-type", "single-type"]) do key
         map(1:10:nrow(data.sims[key])) do k
-            q = data.sims[key][k:k+9,:all] .+ 1e-5
-            kldivergence(p, q)
+            q = data.sims[key][k:k+9,col]
+            kldivergence(p, q, eps)
         end
     end
     m1, q1 = mean(kldiv[1]), quantile(kldiv[1], [0.025, 0.975])
@@ -98,17 +132,51 @@ kldivs = map(alldata) do data
     @info "single-type" m2 q2
     kldiv
 end
-
 titles = ["Drosophila", "Yeast", "Primates (GO:0002376)"]
 ps = map(zip(kldivs, titles)) do (kldiv, title)
     stephist(kldiv, fill=true, fillalpha=0.2, color=[:firebrick :grey],
             grid=false, normalize=true, legend=false, size=(300,200),
-            xlabel="\$D_{\\mathrm{KL}}(p\\ ||\\tilde{p})\$", guidefont=8,
+            xlabel="\$D(p,\\tilde{p})\$", guidefont=8,
             title= title, titlefont=7, title_loc=:left,
-            ylabel="density", fontfamily="helvetica", xrotation=45, tickfont=7)
+            ylabel="density", fontfamily="helvetica", 
+            xrotation=45, tickfont=7)
 end
 plot(ps..., layout=(1,3), size=(550,150), margin=5mm)
+
 savefig(joinpath(pth, "kldiv.pdf"))
+
+
+# KL divergence for each  species
+# -------------------------------
+function kldivplot(data, kmax=9)
+    yall = obsproportions(data.data, 0:kmax);
+    eps = 1/(nrow(data.data))
+    kldivs = map(names(yall)[3:end]) do sp
+        @info "" sp
+        p = yall[:,sp] 
+        kldiv = map(["two-type", "single-type"]) do key
+            map(1:10:nrow(data.sims[key])) do k
+                q = data.sims[key][k:k+kmax,sp]
+                kldivergence(p, q, eps)
+            end
+        end
+        m1, q1 = mean(kldiv[1]), quantile(kldiv[1], [0.025, 0.975])
+        m2, q2 = mean(kldiv[2]), quantile(kldiv[2], [0.025, 0.975])
+        @info "two-type" m1 q1 
+        @info "single-type" m2 q2
+        sp, kldiv
+    end
+    kwargs = (title_loc=:left, titlefont=8, fill=true, fillalpha=0.2, 
+              normalize=true, color=[:firebrick :black], xrotation=0, 
+              legend=false, grid=false, bins=25, tickfont=6)
+    [stephist(x; title=sp, kwargs...) for (sp, x) in kldivs]
+end
+
+p1 = plot(kldivplot(alldata[1])..., layout=(2,4), size=(800,200))
+p2 = plot(kldivplot(alldata[2])..., layout=(2,4), size=(800,200))
+p3 = plot(kldivplot(alldata[3])..., size=(800,300))
+plot(p1, p2, p3, layout= grid(3, 1, heights=[0.28, 0.28, 0.44]), size=(800,800))
+savefig(joinpath(pth, "kldiv-sp.pdf"))
 
 
 # 3. complete posterior predictive distributions
