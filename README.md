@@ -7,7 +7,8 @@ Arthur Zwaenepoel 2021 <arzwa@psb.vib-ugent.be>
 
 Inference for a two-type branching process model of gene family evolution by
 duplication and loss. The main aim is more realistic estimation of gene
-duplication and loss rates from gene family data. The method for computing
+duplication and loss rates from gene family data (see the [associated preprint
+here](https://doi.org/10.1101/2021.03.18.435925)). The method for computing
 transition probabilities is based on the work of Xu et al. (2015) on the
 Birth-Death-Shift process.
 
@@ -39,5 +40,8 @@ For more information, consult the
 
 ## Reference
 
-Zwaenepoel & Van de Peer *in preparation*
-
+```
+A two-type branching process model of gene family evolution
+Arthur Zwaenepoel, Yves Van de Peer
+bioRxiv 2021.03.18.435925; doi: https://doi.org/10.1101/2021.03.18.435925 
+```
