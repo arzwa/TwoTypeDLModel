@@ -68,7 +68,7 @@ where `1` denotes a type 1 particle and `2` a type 2 particle, while `∅`
 denotes nothing. The basic model is represented in the package as follows:
 =#
 using TwoTypeDLModel
-m = TwoTypeDL(λ=0.2, μ₁=0.2, ν=0.1, μ₂=1.5)
+m = TwoTypeDL(λ=0.2, μ₁=0.1, ν=0.1, μ₂=4.)
 
 #=
 The package implements the method of Xu *et al.* (2015) to compute transition
@@ -110,8 +110,9 @@ using Plots, StatsPlots
 heatmap(P, size=(300,300), grid=false)
 
 # or several of them over different time points:
-plot([heatmap(TwoTypeDLModel.transitionp(m, 2, 3, t, s)) for t in 0.01:1:6]..., 
-     layout=(2,3), size=(650,300), grid=false)
+plot([heatmap(TwoTypeDLModel.transitionp(m, 2, 3, t, s)) for t in 0.02:0.1:1.]..., 
+     layout=(1,10), colorbar=false, ylim=(0.5,10.5), xlim=(0.5,10.5),
+     framestyle=:none, xticks=false, yticks=false, size=(1500,170), grid=false)
 
 # ## *Drosophila* example
 
@@ -322,3 +323,4 @@ ppx = TwoTypeDLModel.ppsim(m, 100);
 # line of code could be used to obtain for instance the posterior predictive 
 # 95% intervals for the size distribution for each taxon
 combine(groupby(ppx, :k), names(ppx) .=> x->Tuple(quantile(x, [0.025, 0.975])))
+

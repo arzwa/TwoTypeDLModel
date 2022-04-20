@@ -21,7 +21,7 @@ end
 The ODE system for the two elementary probability generating functions of the
 two-type DL model.
 """
-function pgf_ode!(dϕ, ϕ, θ::TwoTypeDL, t)
+function pgf_ode!(dϕ, ϕ, θ, t)
     @unpack λ, ν, μ₁, μ₂ = θ
     dϕ[1] = μ₁ + λ*ϕ[1]*ϕ[2] - (λ + μ₁)*ϕ[1]
     dϕ[2] = μ₂ + ν*ϕ[1] + λ*ϕ[2]^2 - (λ + ν + μ₂)ϕ[2]
@@ -38,7 +38,7 @@ Involves solving a system of two ODEs.
     Including a callback to ensure positivity is possible, but doesn't work
     with complex input.
 """
-function ϕ1ϕ2(θ::TwoTypeDL, s1::T, s2::T, t; kwargs...) where T
+function ϕ1ϕ2(θ, s1::T, s2::T, t; kwargs...) where T
     ϕ0 = [s1; s2]
     ts = (0., t)
     pr = ODEProblem(pgf_ode!, ϕ0, ts, θ)
@@ -51,14 +51,14 @@ end
 
 Compute the probability generating function along the phylogeny. `s` should be
 a `num_nodes × 4` matrix with the desired power series arguments initialized at
-the leaves of the tree. This marix will be filled with the `i`th row containing
+the leaves of the tree. This matrix will be filled with the `i`th row containing
 the computed values for the tree node with id `i`, with the first two columns
 the values for the generating functions for the gene counts of the two types at
 the end of the branch leading to node `i` and the last two columns the values
 for the generating functions for the gene counts of two types at the beginning
 of the branch (is that the right way to express this?). 
 """
-function ϕlogeny!(θ::TwoTypeDL, s, tree; kwargs...)
+function ϕlogeny!(θ, s, tree; kwargs...)
     function walk(n)
         if isleaf(n) 
             s1, s2 = s[id(n),1], s[id(n),2]
@@ -68,8 +68,12 @@ function ϕlogeny!(θ::TwoTypeDL, s, tree; kwargs...)
             return n1, n2
         end
         childs = map(walk, children(n))
-        s1 = prod(first.(childs))
-        s2 = prod(last.(childs))
+        if iswgm(n)
+            s1, s2 = wgmpgf(θ, n, childs[1]...) 
+        else
+            s1 = prod(first.(childs))
+            s2 = prod(last.(childs))
+        end
         s[id(n),1] = s1
         s[id(n),2] = s2         
         isroot(n) && return s1, s2
@@ -106,6 +110,9 @@ function p_nonextinct_bothclades(m::TwoTypeTree, settings)
     end
     return p
 end
+# Note that this is stuff which becomes more tricky when not having pgf's
+# available as when we would using more general bivariate markov chains with a
+# matrix exponential approach
 
 """
     ϕ_fft_grid(θ, t, N)
@@ -131,9 +138,18 @@ function ϕ_fft_grid(θ, t, settings::PSettings)
     end
     ensemble_prob = EnsembleProblem(prob, prob_func=ensemble_probfun)
     sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), 
-                trajectories=N*N, abstol=abstol, reltol=reltol)
+                trajectories=N*N, abstol=abstol, reltol=reltol, dense=false)
     extract_ϕ1ϕ2_solution(sim, N, Matrix{Complex{Float64}})
 end
+# note on the output of the ensemble solver: sim.u is a vector of length N x N
+# with the solutions along the N x N grid. `last.(sim.u)` will give the solutions
+# at the end of the time interval for all points on the grid. sol.u[i](0.2) will
+# work to get the solution at time 0.2 for the ith grid point.
+
+# note on interpolating: solving the system seems to be cheaper than extracting
+# the solutions across the grid for intermediate times... So it is better to
+# recompute the solutions with different end times for different branches than
+# to solve it once for the longest branch and extract intermediate solutions?
 
 """
     extract_ϕ1ϕ2_solution(sln::EnsembleSolution, N)

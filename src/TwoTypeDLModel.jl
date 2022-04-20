@@ -41,6 +41,7 @@ export CountDAG, Profiles, simulate, PSettings, ppsim, Chain, sample
 export initialize!
 
 abstract type RootPrior end
+abstract type TwoTypeModel end
 
 """
     TwoTypeDL{T}
@@ -63,7 +64,7 @@ TwoTypeDL{Float64}
   μ₂: Float64 0.40013553628911924
 ```
 """
-@with_kw struct TwoTypeDL{T}
+@with_kw struct TwoTypeDL{T} <: TwoTypeModel
     λ ::T
     μ₁::T
     ν ::T
@@ -100,7 +101,7 @@ struct TwoTypeTree{T1,T2,T3}
     prior ::T3
 end
 
-(m::TwoTypeTree)(θ::TwoTypeDL) = TwoTypeTree(m.tree, θ, m.prior)
+(m::TwoTypeTree)(θ::TwoTypeModel) = TwoTypeTree(m.tree, θ, m.prior)
 (m::TwoTypeTree)(θ::RootPrior) = TwoTypeTree(m.tree, m.params, θ)
 (m::TwoTypeTree)(a, b) = TwoTypeTree(m.tree, a, b)
 
@@ -109,6 +110,7 @@ include("probabilities.jl")
 include("rootprior.jl")
 include("profile.jl")
 include("dag.jl")
+include("wgm.jl")
 include("simulation.jl")
 include("mcmc.jl")
 

@@ -22,9 +22,7 @@ tostate(t::Transition) = (θ=t.θ, ℓ=t.ℓ, p=t.p)  # without L, for storage (
     Chain(model, priors, data, settings)
 
 A chain object bundles a loglikelihood function, some priors, proposals and a
-state. `hyper` is a vector of indices storing the indices for those parameters
-that do not affect the likelihood when modified while other parameters are held
-fixed.
+state.
 """
 mutable struct Chain{T,Π,P}
     priors::Π
@@ -61,7 +59,9 @@ function loglhoodroot(model, dag, L, settings)
     return ℓ, L
 end
 
-function getmodel(model, priors, x)
+getmodel(model, priors, x) = getmodel(model, model.params, priors, x)
+    
+function getmodel(model, params::TwoTypeDL, priors, x)
     θ  = invlink.(priors, x)  # ℝ -> constrained
     μ₂ = θ[4]
     λ  = θ[1]*μ₂
@@ -70,6 +70,18 @@ function getmodel(model, priors, x)
     rootprior = length(θ) > 4 ? getrootprior(model.prior, θ[5:end]) : model.prior
     return model(TwoTypeDL(λ=λ, μ₁=μ₁, ν=ν, μ₂=μ₂), rootprior)
 end 
+
+function getmodel(model, params::TwoTypeDLWGM, priors, x)
+    θ  = invlink.(priors, x)  # ℝ -> constrained
+    μ₂ = θ[4]
+    λ  = θ[1]*μ₂
+    μ₁ = θ[2]*μ₂
+    ν  = θ[3]*μ₂
+    q  = θ[5:end]
+    r = TwoTypeDLWGM(λ=λ, μ₁=μ₁, ν=ν, μ₂=μ₂, q=q, k=params.k, wgms=params.wgms) 
+    #@info θ
+    return model(r)
+end
 
 getrootprior(p::GeometricPrior, θ) = p(r=θ[1])
 getrootprior(p::Union{BetaGeometricPrior,BBGPrior}, θ) = 
@@ -109,14 +121,14 @@ end
 
 Perform a single iteration for a Metropolis-within-Gibbs algorithm.
 """
-function mwg_sweep!(chain)
+function mwg_sweep!(chain, root=true)
     for (i, p) in enumerate(chain.proposals)
         x = deepcopy(chain.state.θ)
         x[i] += rand(p)
-        if i < 5  # process parameters
-            ℓ_, L_ = chain.ℓfun(x) 
-        else      # root prior parameters
+        if root && i >= 5  # XXX hack, root priors not implemented for WGM curr.
             ℓ_, L_ = chain.ℓroot(x, chain.state.L)
+        else
+            ℓ_, L_ = chain.ℓfun(x) 
         end
         π_ = logprior(chain, x) 
         if log(rand()) < ℓ_ + π_ - logdensity(chain)
@@ -133,7 +145,7 @@ end
 
 Take `n` samples from the chain, returns intermediate results when interrupted.
 """
-function StatsBase.sample(chain, n; progress=true)
+function StatsBase.sample(chain, n; progress=true, root=true)
     i = 0
     x = tostate(chain.state)
     samples = typeof(x)[x]
@@ -141,7 +153,7 @@ function StatsBase.sample(chain, n; progress=true)
         i += 1
         try
             progress && (@printf "%10d " i)
-            x = mwg_sweep!(chain)
+            x = mwg_sweep!(chain, root)
             push!(samples, x)
             progress && (print_progress(x.θ))
         catch e

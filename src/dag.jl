@@ -1,3 +1,6 @@
+# we will need this
+iswgm(node) = NewickTree.degree(node) == 1
+
 # Adapted from DeadBird.
 # NOTE: currently the dag struct is bigger than it should, as we take up
 # unnecessary space for each leaf observation in the last dimension (we
@@ -144,7 +147,9 @@ using variable elimination.
 """
 function prune!(dag, tree, θ, settings) where T
     for node in postwalk(tree)
-        !isleaf(node) && combine!(dag, node)
+        if !isleaf(node) 
+            iswgm(node) ? wgm!(dag, node, θ) : combine!(dag, node)
+        end
         !isroot(node) && prune_edge!(dag, node, θ, settings)
     end
 end
@@ -167,7 +172,7 @@ end
 """
     prune_edge!(dag, node, θ, settings)
 
-Compute the partial lieklihood at the beginning of the branch leading to node
+Compute the partial likelihood at the beginning of the branch leading to node
 `node` given the matrix of partial likelihoods at the end of that same branch.
 """
 function prune_edge!(dag, node, θ, settings)
@@ -191,7 +196,7 @@ function _prune_leaf!(dag::CountDAG{T,Int}, node, j, k, P) where T
         @inbounds dag.parts[i, j+1, k+1, 2] = -Inf
         for l=0:Z
             @inbounds dag.parts[i, j+1, k+1, 2] = 
-                logaddexp(dag.parts[i, j+1, k+1, 2], P[l+1, Z-l+1])
+                logaddexp(dag.parts[i, j+1, k+1, 2], P[l+1, Z-l+1])  # P[(j,k)->(l,Z-l)]
         end
     end
 end

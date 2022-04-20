@@ -5,7 +5,7 @@ using TwoTypeDLModel: BetaGeometric
 using DataFrames, CSV, NewickTree, Distributions
 using Serialization, StatsBase, ThreadTools
 
-prefix = "primates-GO:0002376"  # drosophila-8taxa | GO:0002376
+prefix = "ygob" #"primates-GO:0002376"  # drosophila-8taxa | GO:0002376
 suffix = string(rand())[3:6]  # terrible unique suffix
 tree   = readnw(readline("data/$prefix.nw"))
 rdata  = CSV.read("data/$prefix.csv", DataFrame)
@@ -20,7 +20,7 @@ meanμ  = Dict("ygob" => 1.61, "drosophila" => 3.94, "primates-GO:0002376" => 3.
 # =================
 # set root prior 
 ETA, ZETA = root[prefix]
-settings = PSettings(n=16, N=32, abstol=1e-7, reltol=1e-7)
+settings = PSettings(n=16, N=32, abstol=1e-8, reltol=1e-8)
 rprior = TwoTypeDLModel.BBGPrior(ETA, ZETA, 0.5, 1:(settings.n-1)*2)
 
 # settings, data, model, priors

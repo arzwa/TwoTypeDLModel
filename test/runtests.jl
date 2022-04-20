@@ -11,6 +11,11 @@ using Test, DataFrames, NewickTree, Distributions, Bijectors
     # extinction probability for linear BDP
     p10_lbdp(λ, μ, t) = μ*(1 - exp((λ - μ)*t))/(μ - λ*exp((λ - μ)*t))
 
+    @testset "PGF - FFT" begin
+        θ = TwoTypeDL(0.1, 0.1, 0.1, 1.)
+        f1, f2 = ϕ_fft_grid(θ, 1., PSettings())
+    end
+
     @testset "Probability generating functions" begin
         # the extinction probability given starting state (0,1) and ν=0
         # corresponds to the extinction probability of a linear BDP.
@@ -127,4 +132,60 @@ using Test, DataFrames, NewickTree, Distributions, Bijectors
 
 end
 
+@testset "WGM model" begin
+    using TwoTypeDLModel: TwoTypeDLWGM, p_nonextinct_bothclades 
+    
+    @testset "WGM model likelihood" begin
+        tree1 = readnw("(((A:1.2,B:1.2):0.5):0.3,C:2.0);")
+        θ = TwoTypeDLWGM(0.2, 0.1, 0.2, 5., [0.8], [4], Dict(0x0002=>1))  
+        p = TwoTypeDLModel.BBGPrior(0.9, 4., 0.2, 1:10)
+        s = PSettings(n=12, N=24)
+        X = DataFrame(:A=>[6,8], :B=>[7,5], :C=>[1,2])
+        m = TwoTypeTree(tree1, θ, p)
+        d = CountDAG(X, tree1, s.n)
+        l1 = loglikelihood(m, d, s)
+        e1 = p_nonextinct_bothclades(m, s)
+        θ_ = TwoTypeDLWGM(0.2, 0.1, 0.2, 5., [0.01], [4], Dict(0x0002=>1))  
+        m_ = TwoTypeTree(tree1, θ_, p)
+        l2 = loglikelihood(m_, d, s)
+        e2 = p_nonextinct_bothclades(m_, s)
+        @info "" l1 l2 exp(e1) exp(e2)
+        @test e1 > e2
+        @test l1 > l2
+    end
+
+    @testset "WGM inference" begin
+        tree1 = readnw("(((og:0.19,ob:0.19):0.32):0.3,(on:0.39,osi:0.39):0.42);")
+        θ = TwoTypeDLWGM(0.2, 0.1, 0.2, 5., [0.2], [2], Dict(0x0002=>1))  
+        p = TwoTypeDLModel.BBGPrior(0.9, 4., 0.2, 1:10)
+        s = PSettings(n=12, N=24)
+        m = TwoTypeTree(tree1, θ, p)
+        X, _ = TwoTypeDLModel.simulate(m, 500)
+        d = CountDAG(X, tree1, s.n)
+        priors = (Beta(), Beta(), Beta(), Exponential(5.), Beta())
+        c = Chain(m, priors, d, s)
+        xs = sample(c, 10, root=false)
+        xs = sample(c, 1250, root=false)
+        map(x->TwoTypeDLModel.transform(c, x.θ), xs)[250:end]
+    end
+end
+
+# function for MLE
+#function getfun()
+#    tree1 = readnw("(((og:0.19,ob:0.19):0.32):0.3,(on:0.39,osi:0.39):0.42);")
+#    θ = TwoTypeDLWGM(0.2, 0.1, 0.2, 5., [0.5], [2], Dict(0x0002=>1))  
+#    p = TwoTypeDLModel.BBGPrior(0.9, 4., 0.2, 1:10)
+#    s = PSettings(n=12, N=24)
+#    m = TwoTypeTree(tree1, θ, p)
+#    X, _ = TwoTypeDLModel.simulate(m, 500)
+#    d = CountDAG(X, tree1, s.n)
+#    priors = (Beta(), Beta(), Beta(), Exponential(5.), Beta())
+#    return function fun(y)
+#        x = invlink.(priors, y)
+#        f = m(TwoTypeDLWGM(x[1:4]..., [x[end]], [2], Dict(0x0002=>1)))
+#        -loglikelihood(f, d, s)
+#    end
+#end
+
+    
 

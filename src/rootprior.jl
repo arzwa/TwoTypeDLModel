@@ -172,7 +172,7 @@ end
 
 Base.rand(rng::AbstractRNG, d::BetaGeometric, n::Int) = map(rand(rng, d), 1:n)
 Distributions.logpdf(d::BetaGeometric, k::Int) = 
-    logbeta(d.α + 1, d.β + k - 1) - logbeta(d.α, d.β)
+    logbeta(d.α + 1, d.β + k) - logbeta(d.α, d.β)
 
 """
    loglikelihood(d::BetaGeometric, ks::Vector{Int})
@@ -184,7 +184,7 @@ k=2 is observed, etc.
 function Distributions.loglikelihood(d::BetaGeometric, ks::Vector{Int})
     logp = 0.
     for (k, count) in enumerate(ks)
-        logp += count * logpdf(d, k)
+        logp += count * logpdf(d, k-1)
     end
     return logp
 end

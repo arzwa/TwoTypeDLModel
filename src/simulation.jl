@@ -3,7 +3,7 @@
 
 Get the duplication/loss/... rates when in state X = (X₁, X₂).
 """
-getrates(p::TwoTypeDL, X) = [p.λ*X[1], p.μ₁*X[1], p.λ*X[2], p.μ₂*X[2], p.ν*X[2]]
+getrates(p::TwoTypeModel, X) = [p.λ*X[1], p.μ₁*X[1], p.λ*X[2], p.μ₂*X[2], p.ν*X[2]]
 
 """
     simulate(model::TwoTypeTree, n, [condition::Function])
@@ -76,11 +76,15 @@ end
 Simulate the two-type branching process model with parameters `θ` along a tree
 `tree` with root state `X`.
 """
-function simulate(p::TwoTypeDL, X::Tuple, tree)
+function simulate(p::TwoTypeModel, X::Tuple, tree)
     result = Dict{Symbol,Tuple{Int,Int}}()
     function simwalk(node, X)
         _X = _simulate(p, X, distance(node))
-        isleaf(node) && return result[Symbol(name(node))] = _X
+        if isleaf(node) 
+            return result[Symbol(name(node))] = _X
+        elseif iswgm(node)
+            _X = simwgm(_X, p, id(node))
+        end
         for c in children(node)
             simwalk(c, _X)
         end
@@ -95,7 +99,7 @@ end
 Simulate the two-tye branching process model with parameters `θ` starting from
 state `X` (a tuple (X₁, X₂)) for a time period `t`.
 """
-function _simulate(p::TwoTypeDL, X, t)
+function _simulate(p::TwoTypeModel, X, t)
     rates = getrates(p, X)
     t -= randexp()/sum(rates)
     while t > 0.
